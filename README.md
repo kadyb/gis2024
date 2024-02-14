@@ -17,7 +17,7 @@ Uniwersytecie Marii Curie-Skłodowskiej w 2024 r.
 
 # Zaliczenie
 
-Do zaliczenia kursu wymagane jest wykonanie jednego z proponowanych [projektów końcowych](../Zaliczenie.md).
+Do zaliczenia kursu wymagane jest wykonanie jednego z proponowanych [projektów końcowych](./Zaliczenie.md).
 
 # Literatura
 
