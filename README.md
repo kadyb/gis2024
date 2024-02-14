@@ -5,9 +5,19 @@ Uniwersytecie Marii Curie-Skłodowskiej w 2024 r.
 
 # Materiały
 
+* Wprowadzenie
+* Przetwarzanie danych przestrzennych
+* Dane satelitarne
+* Ortofotomapa
+* Cyfrowe modele wysokościowe
+* Klasyfikacja nienadzorowana
+* Klasyfikacja nadzrowoana
+* Obliczenia równoległe
+* Optymalizacja kodu
+
 # Zaliczenie
 
-Do zaliczenia kursu wymagane jest wykonanie jednego z proponowanych projektów końcowych.
+Do zaliczenia kursu wymagane jest wykonanie jednego z proponowanych [projektów końcowych](../Zaliczenie.md).
 
 # Literatura
 
