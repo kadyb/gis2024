@@ -9,6 +9,8 @@ Uniwersytecie Marii Curie-Skłodowskiej w 2024 r.
 
 Do zaliczenia kursu wymagane jest wykonanie jednego z proponowanych projektów końcowych.
 
+# Literatura
+
 # Kontakt
 
 W razie pytań proszę o kontakt na krzysztof.dyba@amu.edu.pl
