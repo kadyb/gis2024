@@ -10,7 +10,7 @@ Wyniki projektu należy zaprezentować na zajęciach oraz przesłać raport koń
 ## * Klasyfikacja nienadzorowana
 
 Wybierz powiat i dokonaj klasyfikacji nienadzorowanej dowolnego wielokanałowego zdjęcia
-satelitarnego o niskim zachmurzeniu uwzgędniając poniższe punkty:
+satelitarnego o niskim zachmurzeniu uwzględniając poniższe punkty:
 
 1. Jako metodę referencyjną wykorzystaj algorytm k-means.
 2. Sprawdź jak zmieni się wynik dla innej liczby klastrów.
@@ -19,12 +19,12 @@ satelitarnego o niskim zachmurzeniu uwzgędniając poniższe punkty:
 5. Spróbuj zinterpretować, co przedstawiają wydzielone klastry wykorzystując wykres pudełkowy oraz kompozycję kanałów spektralnych.
 6. Zaprezentuj wynik klasteryzacji na mapie i dobierz odpowiedni schemat kolorów.
 
-## * Klasyfikacja nadzorozwana
+## * Klasyfikacja nadzorowana
 
 Wybierz powiat i dokonaj klasyfikacji nadzorowanej dowolnego wielokanałowego zdjęcia
-satelitarnego o niskim zachmurzeniu uwzgędniając poniższe punkty:
+satelitarnego o niskim zachmurzeniu uwzględniając poniższe punkty:
 
-1. Jako dane referencyjne należy wykorzystać dowolony zbiór danych o pokryciu terenu. Przykładowo może być to [S2GLC](https://s2glc.cbk.waw.pl/), [CLC](https://land.copernicus.eu/en/products/corine-land-cover) czy [BDOT10K:Pokrycie Terenu](https://www.geoportal.gov.pl/pl/dane/baza-danych-obiektow-topograficznych-bdot10k/). Liczba klas nie powinna być zbyt duża.
+1. Jako dane referencyjne należy wykorzystać dowolny zbiór danych o pokryciu terenu. Przykładowo może być to [S2GLC](https://s2glc.cbk.waw.pl/), [CLC](https://land.copernicus.eu/en/products/corine-land-cover) czy [BDOT10K:Pokrycie Terenu](https://www.geoportal.gov.pl/pl/dane/baza-danych-obiektow-topograficznych-bdot10k/). Liczba klas nie powinna być zbyt duża.
 2. Oceń skuteczność modelu na zbiorze testowym.
 3. Wskaż, które klasy były najczęściej poprawnie i niepoprawnie klasyfikowane.
 4. Porównaj wyniki klasyfikacji z mapą referencyjną (użyj identycznego schematu kolorów).
