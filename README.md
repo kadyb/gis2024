@@ -1,2 +1,14 @@
-# gis2024
-Kurs "Zaawansowane analizy przestrzenne" 2024 UMCS
+# Zaawansowane analizy przestrzenne
+
+To repozytorium zawiera materiały do kursu **Zaawansowane analizy przestrzenne** prowadzonego na
+Uniwersytecie Marii Curie-Skłodowskiej w 2024 r.
+
+# Materiały
+
+# Zaliczenie
+
+Do zaliczenia kursu wymagane jest wykonanie jednego z proponowanych projektów końcowych.
+
+# Kontakt
+
+W razie pytań proszę o kontakt na krzysztof.dyba@amu.edu.pl
