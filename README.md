@@ -11,7 +11,7 @@ Uniwersytecie Marii Curie-Skłodowskiej w 2024 r.
 * Ortofotomapa
 * Cyfrowe modele wysokościowe
 * Klasyfikacja nienadzorowana
-* Klasyfikacja nadzrowoana
+* Klasyfikacja nadzorowana
 * Obliczenia równoległe
 * Optymalizacja kodu
 
