@@ -4,7 +4,8 @@ Proszę wybrać jeden z poniższych projektów.
 
 Projekt może zostać wykonany w grupie 2-3 osób.
 
-Wyniki projektu należy zaprezentować na zajęciach oraz przesłać raport końcowy.
+Wyniki projektu należy zaprezentować na zajęciach oraz przesłać raport końcowy
+(preferowany format to [R Markdown](https://rmarkdown.rstudio.com/)).
 
 ## * Klasyfikacja nienadzorowana
 
@@ -30,3 +31,11 @@ satelitarnego o niskim zachmurzeniu uwzgędniając poniższe punkty:
 5. Oblicz procentowy udział poszczególnych klas pokrycia terenu na analizowanym obszarze.
 
 ## * Analiza wieloczasowa
+
+Wybierz trzy obiekty (np. zbiornik wodny, las, pole uprawne) i pobierz kolekcje zdjęć satelitarnych
+dla całego roku w celu analizy zmienności dwóch wybranych wskaźników spektralnych (np. NDVI, NDMI)
+uwzględniając następujące punkty:
+
+1. Wybrane obiekty nie powinny być zasłonięte przez chmury.
+2. Wykorzystaj przynajmniej jedno zdjęcie dla każdego miesiąca.
+3. Przygotuj mapy (pamiętaj o jednakowej skali barw) oraz wykresy liniowe.
