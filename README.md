@@ -44,7 +44,7 @@ Dokumentację do tego pakietu znajdziesz tutaj: <https://rspatial.github.io/terr
 
 Materiały dostępne są w postaci interaktywnych notebooków (R Markdown).
 
-* Wprowadzenie
+* [Wprowadzenie](./01_wprowadzenie.html)
 * Przetwarzanie danych przestrzennych
 * Dane satelitarne
 * Ortofotomapa
