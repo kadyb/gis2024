@@ -167,6 +167,8 @@ funkcji (`?terra::plot`). Dla przykładu możemy nadać kolory na podstawie atry
 `NAME_1` (gmina) używając argumentu `col` i definiując wybrane kolory. Oprócz tego,
 możemy zmienić kolor tła (argument `background`) oraz granic poligonów (argument
 `border`). Możemy również nadać rycinie tytuł używając argumentu `main`.
+Alternatywnie, zamiast nazw kolorów, można wykorzystać kod szesnastkowy, np.
+`#ffff00` będzie reprezentował odcień żółtego.
 
 ```{r}
 plot(wektor, "NAME_1", col = c("red", "blue", "green"), background = "lightgrey",
