@@ -3,6 +3,14 @@
 To repozytorium zawiera materiały do kursu **Zaawansowane analizy przestrzenne** prowadzonego na
 Uniwersytecie Marii Curie-Skłodowskiej w 2024 r.
 
+**R** jest jednym z najpopularniejszych języków programowania używanych do analizy danych.
+Jest szeroko stosowany w analizach przestrzennych ze względu na dużą liczbę pakietów przeznaczonych
+do przetwarzania danych geoprzestrzennych. **R** znalazł szczególne zastosowanie w takich dziedzinach
+ekologia, nauki środowiskowe czy teledetekcja dzięki swojej prostocie, możliwości automatyzacji powtarzalnych
+zadań oraz ogromnemu wsparciu przez jego społeczność. **R** stanowi świetną alternatywę dla standardowych
+aplikacji GIS znacząco rozszerzając ich możliwość w kontekście statystycznej analizy danych i uczenia maszynowego.
+Oprócz tego oferuje szeroki wachlarz technik wizualizacji danych.
+
 # Materiały
 
 * Wprowadzenie
