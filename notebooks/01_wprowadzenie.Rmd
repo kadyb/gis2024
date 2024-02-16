@@ -1,0 +1,184 @@
+---
+title: "Wprowadzenie"
+author: "Krzysztof Dyba"
+output:
+  html_document:
+    toc: yes
+    toc_float: true
+---
+
+```{r message=FALSE}
+library("terra")
+```
+
+Pakiet **terra** wspiera obsługę wielu formatów danych rastrowych i wektorowych
+poprzez [GDAL](https://gdal.org). Możesz uzyskać listę wspieranych sterowników
+używając funkcji `gdal(drivers = TRUE)`.
+
+# Dane rastrowe
+
+W niniejszym pakiecie znajdziemy kilka przykładów danych rastrowych, tj.:
+
+* `elev.tif`
+* `logo.tif`
+* `meuse.tif`
+
+## Wczytywanie
+
+Do wczytania danych rastrowych służy funkcja `rast()` i wymaga podania ścieżki
+do pliku lub plików. Spróbujmy zatem wczytać przykładowy plik `elev.tif`, który
+domyślnie zawarty jest w pakiecie (w podfolderze `ex`). W tym celu należy uprzednio
+wywołać funkcję `system.file()`, która zwróci nam ścieżkę do tego pliku.
+
+```{r}
+sciezka_do_rastra = system.file("ex/elev.tif", package = "terra")
+sciezka_do_rastra # wyświetl
+```
+
+Funkcję `system.file()` stosuje się jedynie jeśli chcemy odwołać się do danych
+pochodzących z jakiegoś pakietu. W przypadku standardowej pracy, ten krok jest
+pomijany.
+
+Następnie wczytajmy dane do sesji ze wskazanej lokalizacji.
+
+```{r}
+raster = rast(sciezka_do_rastra)
+```
+
+Wpisując nazwę obiektu (tj. `raster`) możemy wyświetlić jego metadane.
+
+```{r}
+raster
+```
+
+Możemy zauważyć, że metadane składają się z 9 atrybutów:
+
+* klasa obiektu
+* wymiary (liczba wierszy, kolumn, warstw)
+* rozdzielczość
+* zakres przestrzenny (*bounding box*)
+* przestrzenny układ współrzędnych
+* źródło
+* nazwa warstwy
+* wartość minimalna i maksymalna
+
+Co ważne, pakiet **terra** przy otwieraniu rastra nie wczytuje go do pamięci,
+a jedynie tworzy wskaźnik do niego (dane przetwarzane są blokowo, co pozwala
+przetwarzać dane, które nie mieszczą się w pamięci).
+
+## Zapisywanie
+
+Do zapisu danych rastrowych służy funkcja `writeRaster()`, w której trzeba
+zdefiniować zapisywany obiekt oraz ścieżkę do zapisu. Ścieżkę do pliku można
+zdefiniować na dwa sposoby. Pierwszy (łatwiejszy) to podanie **ścieżki bezwzględnej**,
+tj. wskazanie dokładnej lokalizacji, w której znajduje się plik. Na przykład:
+
+```r
+sciezka = "C:/Users/Krzysztof/Desktop/raster.tif"
+```
+
+Jednak nie jest to zalecana metoda, gdyż uniemożliwia zlokalizowanie plików na
+różnych systemach operacyjnych. Drugi sposób polega na określeniu **ścieżki względnej**.
+W tym przypadku podajemy lokalizację pliku względem bieżącego katalogu roboczego
+(lub projektu). Aby dowiedzieć się, gdzie znajduje się katalog roboczy, możemy
+użyć funkcji `getwd()`, a do jego zmiany funkcji `setwd()`. Na przykład:
+
+```r
+getwd()
+#> "C:/Users/Krzysztof/Documents"
+sciezka = "raster.tif"
+```
+
+Teraz zapiszmy nasz obiekt w aktualnym katalogu roboczym podając nazwę `raster.tif`.
+Typ pliku (w tym przypadku *geotiff*) jest określany automatycznie na podstawie
+jego rozszerzenia w nazwie.
+
+```r
+writeRaster(raster, filename = "raster.tif")
+```
+
+W powyższej funkcji można zdefiniować również inne argumenty, np. typ danych
+(`datatype = "INT1U"`) czy kompresję (`gdal = c("COMPRESS=LZW"`).
+
+# Dane wektorowe
+
+## Wczytywanie
+
+Procedura wczytania danych wektorowych wygląda podobnie jak w przypadku danych
+rastrowych. Do tego celu służy funkcja `vect()`, która również przyjmuje ścieżkę
+do pliku. Tym razem wczytamy plik `ex/lux.shp` również dostarczony z pakietem
+**terra**.
+
+```{r}
+sciezka_do_wektora = system.file("ex/lux.shp", package = "terra")
+wektor = vect(sciezka_do_wektora)
+wektor
+```
+
+Tak jak poprzednio otrzymujemy metadane tej warstwy, które zawierają następujące
+atrybuty:
+
+* klasa obiektu
+* typ geometrii
+* wymiary (liczba geometrii, atrybutów)
+* zakres przestrzenny
+* źródło
+* przestrzenny układ współrzędnych
+* ramka danych z nazwą, typem i wartościami atrybutów
+
+Należy wspomnieć, że dane wektorowe domyślnie wczytywane są do pamięci w
+przeciwieństwie do rastrów. Chyba, że zdefiniuje się argument `proxy = TRUE`.
+
+## Zapisywanie
+
+Do zapisu danych wektorowych służy funkcja `writeVector()`. Działa ona analogicznie
+jak funkcja `writeRaster()`. Zapiszmy naszą warstwę wektorową jako *geopackage* (.gpkg)
+w katalogu roboczym.
+
+```r
+writeVector(wektor, filename = "wektor.gpkg")
+```
+
+# Wizualizacje
+
+Do podstawowej wizualizacji danych zarówno rastrowych i wektorowych służy funkcja
+`plot()`.
+
+```{r}
+plot(raster)
+```
+
+```{r}
+# wyświetla tylko geometrie
+# jeśli nie zdefiniowano żadnego atrybutu
+plot(wektor)
+```
+
+Warstwy można na siebie nakładać używając argumentu `add = TRUE`. Pamiętaj
+żeby przed wyświetleniem sprawdzić czy warstwy mają jednakowe układy współrzędnych.
+
+```{r}
+plot(raster)
+plot(wektor, add = TRUE)
+```
+
+Parametry wizualizacji oczywiście można dostosować. Sprawdź ich wykaz w dokumentacji
+funkcji (`?terra::plot`). Dla przykładu możemy nadać kolory na podstawie atrybutu
+`NAME_1` (gmina) używając argumentu `col` i definiując wybrane kolory. Oprócz tego,
+możemy zmienić kolor tła (argument `background`) oraz granic poligonów (argument
+`border`). Możemy również nadać rycinie tytuł używając argumentu `main`.
+
+```{r}
+plot(wektor, "NAME_1", col = c("red", "blue", "green"), background = "lightgrey",
+     border = "white" , main = "Luksemburg")
+```
+
+Do bardziej zaawansowanych wizualizacji możesz wykorzystać na przykład pakiety
+[tmap](https://r-tmap.github.io/tmap/) czy [ggplot2](https://ggplot2.tidyverse.org/).
+
+# Zadanie
+
+1. Wczytaj plik `logo.tif` z pakietu i sprawdź jego metadane.
+2. Pobierz dane z [Natural Earth](https://www.naturalearthdata.com/downloads/)
+w małej skali i przygotuj wizualizację. Funkcje `download.file()` oraz `unzip()`
+mogą być tutaj przydatne.
