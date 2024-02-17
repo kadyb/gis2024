@@ -98,7 +98,7 @@ writeRaster(raster, filename = "raster.tif")
 ```
 
 W powyższej funkcji można zdefiniować również inne argumenty, np. typ danych
-(`datatype = "INT1U"`) czy kompresję (`gdal = c("COMPRESS=LZW"`).
+(`datatype = "INT1U"`) czy kompresję (`gdal = c("COMPRESS=LZW")`).
 
 # Dane wektorowe
 
