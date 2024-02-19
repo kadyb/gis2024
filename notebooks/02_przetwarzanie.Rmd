@@ -1,0 +1,291 @@
+---
+title: "Przetwarzanie danych przestrzennych"
+author: "Krzysztof Dyba"
+output:
+  html_document:
+    toc: yes
+    toc_float: true
+---
+
+```{r message=FALSE}
+library("terra")
+```
+
+# Dane rastrowe
+
+## Generowanie danych
+
+Na poprzednich zajęciach wykorzystaliśmy funkcję `rast()` do wczytania danych
+rastrowych, niemniej posiada ona więcej zastosowań. Na przykład można użyć ją
+do konwersji (macierz -> raster) czy wygenerowania nowego rastra z zadanymi
+parametrami. W przypadku tworzenia nowego rastra można zdefiniować m. in. 
+liczbę wierszy, kolumn i warstw, zakres przestrzennych, układ współrzędnych 
+czy rozdzielczość. Zdefiniujmy "szablon" bez wartości:
+
+```{r}
+raster = rast(nrows = 10, ncols = 20, nlyrs = 1,
+              xmin = -180, xmax = 180, ymin = -90, ymax = 90,
+              crs = "EPSG:4326")
+raster
+```
+
+Funkcja `rast()` przyjmuje argument `vals`, który zostawiliśmy pusty, w związku
+z czym stworzonemu rastrowi nie zostały przypisane żadne wartości. Możemy to
+potwierdzić za pomocą funkcji `hasValues`.
+
+```{r}
+hasValues(raster)
+```
+
+De facto, oznacza to, że stworzyliśmy jedynie metadane rastra (tj. "szablon").
+Jeśli chcemy go wypełnić, to musimy przypisać / wygenerować tyle wartości z ilu
+komórek składa się raster.
+
+```{r}
+n = ncell(raster) # liczba komórek rastra
+wartosci = rnorm(n, mean = 0, sd = 1) # wylosuj wartości z rozkładu normalnego
+head(wartosci) # wyświetl 6 pierwszych wylosowanych wartości
+# hist(wartosci) # histogram
+```
+
+Teraz przypiszmy wygenerowane wartości do `raster` za pomocą funkcji `values()`.
+
+```{r}
+values(raster) = wartosci
+raster
+```
+
+Możemy również wyświetlić ten raster.
+
+```{r}
+plot(raster)
+```
+
+## Algebra rastrów
+
+Na rastrach można wykonywać standardowe działania algebraiczne, operacje logiczne
+oraz funkcje matematyczne.
+
+```{r}
+r1 = sqrt(raster + 10)
+r1
+plot(r1)
+```
+
+```{r}
+r2 = abs(raster - r1)
+r2
+plot(r2)
+```
+
+```{r}
+r3 = raster < 0 # operacja logiczna
+r3
+plot(r3)
+```
+
+## Operacje
+
+### Docinanie
+
+Nadmierny zasięg rastra wykraczający poza obszar analizy można dociąć za pomocą
+funkcji `crop()` używając innego rastra (*SpatRaster*), wektora (*SpatVector*)
+lub zasięgu zdefiniowanego przy użyciu współrzędnych (*SpatExtent*).
+
+```{r}
+zasieg = ext(-100, 100, -50, 50) # xmin, xmax, ymin, ymax
+r = crop(raster, zasieg)
+r
+plot(r)
+```
+
+Należy zauważyć, że zasię dociętego rastra może się różnić od oczekiwanego,
+ponieważ zwracane są pełne komórki w wierszach i kolumnach.
+
+### Zmiana rozdzielczości
+
+Rozdzielczość przestrzenną rastra można zmienić za pomocą trzech funkcji:
+
+* `disagg()` (zwiększa rozdzielczość, czyli komórki stają się mniejsze)
+* `aggregate()` (zmniejsza rozdzielczość, czyli komórki stają się większe)
+* `resample()` (przepróbkowanie do zdefiniowanej siatki)
+
+Pierwsze dwie funkcje wymagają podanie współczynnika agregacji, natomiast ostatnia
+wymieniona funkcja wymaga wskazania rastra z oczekiwaną geometrią. W przypadku
+funkcji `disagg()` dostępne są dwie metody, tj. interpolacji najbliższego sąsiada
+(`near`) oraz dwuliniowej (`bilinear`). Ta pierwsza stosowana jest najczęściej
+w przypadku danych kategorycznych. Zauważ również, że zastosowanie tej metody
+powoduje podział komórki na mniejsze części, co nie wpływa na efekt wizualizacji.
+
+```{r}
+r1 = disagg(raster, fact = 2, method = "bilinear")
+r2 = aggregate(raster, fact = 2, fun = "mean")
+```
+
+```{r}
+par(mfrow = c(1, 3)) # wyświetl 3 rastry obok siebie
+plot(raster, main = "Raster wejściowy")
+plot(r1, main = "Upsampling")
+plot(r2, main = "Downsampling")
+```
+
+Rozdzielczość rastrów można także sprawdzić za pomocą funkcji `res()`. Sprawdźmy
+jeszcze jak zastosować funkcję `resample()` w praktyce.
+
+```{r}
+szablon = rast(nrows = 20, ncols = 40,
+               xmin = -180, xmax = 180, ymin = -90, ymax = 90)
+r3 = resample(raster, szablon, method = "bilinear")
+```
+
+### Reprojekcja
+
+Do transformacji przestrzennego układu współrzędnych służy funkcja `project()`.
+Tak jak w przypadku poprzednich funkcji można wykorzystać różne metody interpolacji.
+Przetransformujmy nasz aktualny układ `EPSG:4326` wyrażony w stopniach do
+odwzorowania Mollweidego (`+proj=moll`) wyrażonego w metrach.
+
+```{r}
+r_moll = project(raster, "+proj=moll", method = "bilinear")
+r_moll
+```
+
+Porównajmy otrzymany raster z oryginalnym.
+
+```{r}
+raster
+par(mfrow = c(1, 2))
+plot(raster, main = "World Geodetic System 84")
+plot(r_moll, main = "Odwzorowanie Mollweidego")
+```
+
+Jeśli posiadasz dane rastrowe i wektorowe w różnych układach współrzędnych,
+to zalecana jest reprojekcja danych wektorowych z dwóch powodów:
+
+* jest szybsza
+* jest odwracalna (transformacja odbywa się bez utraty precyzji)
+
+### Statystyki globalne
+
+Wyliczenie statystyk komórek warstwy rastrowej można wykonać za pomocą funkcji
+`global()`. Dla przykładu:
+
+```{r}
+# data.frame() łączy poniższe obiekty do jednego
+data.frame(
+  global(raster, "sum"),
+  global(raster, "mean"),
+  global(raster, "sd")
+)
+```
+
+### Statystyki strefowe
+
+Jeśli posiadamy dwa rastry, tj. pierwszy numeryczny, a drugi kategoryczny
+(określający strefy), to możemy wyliczyć statystyki strefowe. Najpierw
+wykorzystajmy funkcje `sample()` do wygenerowania kategorii oznaczonych numerami
+od 1 do 3 (w rzeczywistej analizie mogą one reprezentować, np. zbiornik wodny,
+las i strefę zabudowaną). Musimy ustawić argument `replace = TRUE`, aby wykonać
+losowanie ze zwracaniem.
+
+```{r}
+kategorie = sample(1:3, size = ncell(raster), replace = TRUE)
+head(kategorie)
+```
+
+Następnie kopiujemy raster wejściowy `raster` wykorzystując funkcję `rast`
+zastępując przy tym jego wartości `vals = kategorie` i nowy raster nazywamy
+`strefy`.
+
+```{r}
+strefy = rast(raster, vals = kategorie)
+plot(strefy, main = "Strefy", col = c("blue", "green", "red"))
+```
+
+Teraz możemy obliczyć statystyki strefowe.
+
+```{r}
+stat_strefy = zonal(raster, strefy, fun = "mean")
+stat_strefy
+```
+
+### Reklasyfikacja
+
+Reklasyfikacja wartości rastra możliwa jest za pomocą funkcji `classify()`.
+Załóżmy, że chcemy wszystkie wartości poniżej 0 zamienić na brakujące wartości
+(`NA`), a wszystkie wartości powyżej 0 zamienić na 10. W tym celu musimy
+stworzyć tabelę klasyfikacyjną składającą się z trzech kolumn:
+
+1. dolny przedział wartości
+2. górny przedział wartości
+3. nowa wartość
+
+Tabelę najprościej stworzyć definiując uprzednio wektor i następnie transformując
+go do macierzy.
+
+```{r}
+# wektor
+tabela = c(
+  -Inf, 0, NA,
+  0, Inf, 10
+)
+# zamiana wektora na macierz
+tabela = matrix(tabela, ncol = 3, byrow = TRUE)
+tabela
+```
+
+Teraz przeprowadźmy reklasyfikację.
+
+```{r}
+reklasyfikacja = classify(raster, tabela)
+plot(reklasyfikacja)
+```
+
+Istnieje również prostsza alternatywa w postaci `subst()` ukierunkowana na
+zastępowanie wartości.
+
+### Okno ruchome
+
+Ostatnią omawianą funkcją jest `focal()` służącą do obliczania wartości na podstawie
+sąsiadujących komórek rastra w ruchomym oknie. Można zdefiniować dowolny kształt
+sąsiedztwa (np. prostokąt, koło) oraz nadać komórkom odpowiednie wagi. Zazwyczaj
+niniejszą funkcję wykorzystuje się do wygładzania danych numerycznych za pomocą
+średniej czy mediany oraz danych kategorycznych za pomocą mody.
+
+```{r}
+r = focal(raster, w = 3, fun = "mean")
+par(mfrow = c(1, 2))
+plot(raster, main = "Raster wejściowy")
+plot(r, main = "Raster wygładzony")
+```
+
+Omówiliśmy tylko podstawowe i najczęściej stosowane funkcje do przetwarzania
+danych rastrowych. Pakiet **terra** oferuje ich zdecydowanie więcej (sprawdź
+dokumentację).
+
+# Dane wektorowe
+
+# Zadania
+
+1. Z portalu [OpenTopography](https://opentopography.org/) pobierz numeryczny
+model pokrycia terenu (np. NASADEM lub SRTM) i wykonaj następujące czynności:
+
+* sprawdź metadane pobranego rastra
+* przytnij zasięg przestrzenny o 10% z każdej strony
+(tj. `0.9 * c(xmax, ymax)` i `1.1 * c(xmin, ymin)`)
+* transformuj układ współrzędnych do `EPSG:2180`
+* wygładź wartości używając średniej arytmetycznej w oknie ruchomym
+* oblicz statystyki rastra, tj. wartość minimalna i maksymalna,
+średnia oraz odchylenie standardowe
+* przygotuj wizualizację
+* zapisz raster na dysku z kompresją LZW
+
+2. Pobierz granice powiatów z Geoportalu, następnie wylicz ich centroidy
+i wskaż te powiaty, które są położone najbliżej i najdalej. Wskazówki:
+
+* Obiekt klasy `dist` można przekonwertować do macierzy.
+* Odległość obiektu od samego siebie wynosi 0 m i trzeba to wykluczyć.
+* Do znalezienia indeksu o minimalnej lub maksymalnej wartości można wykorzystać
+funkcje `which()` z argumentem `arr.ind = TRUE`.
+
+
