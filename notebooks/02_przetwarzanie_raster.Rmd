@@ -29,7 +29,7 @@ raster
 
 Funkcja `rast()` przyjmuje argument `vals`, który zostawiliśmy pusty, w związku
 z czym stworzonemu rastrowi nie zostały przypisane żadne wartości. Możemy to
-potwierdzić za pomocą funkcji `hasValues`.
+potwierdzić za pomocą funkcji `hasValues()`.
 
 ```{r}
 hasValues(raster)
