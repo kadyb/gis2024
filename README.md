@@ -45,11 +45,11 @@ Dokumentację do tego pakietu znajdziesz tutaj: <https://rspatial.github.io/terr
 Materiały dostępne są w postaci interaktywnych notebooków (R Markdown).
 
 * [Wprowadzenie](https://kadyb.github.io/gis2024/notebooks/01_wprowadzenie.html)
-* Przetwarzanie danych rastrowych
+* [Przetwarzanie danych rastrowych](https://kadyb.github.io/gis2024/notebooks/02_przetwarzanie_raster.html)
 * Przetwarzanie danych wektorowych
-* Dane satelitarne
 * Ortofotomapa
 * Cyfrowe modele wysokościowe
+* Dane satelitarne
 * Klasyfikacja nienadzorowana
 * Klasyfikacja nadzorowana
 * Obliczenia równoległe
