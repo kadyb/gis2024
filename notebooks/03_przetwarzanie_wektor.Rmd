@@ -1,0 +1,231 @@
+---
+title: "Przetwarzanie danych wektorowych"
+author: "Krzysztof Dyba"
+output:
+  html_document:
+    toc: yes
+    toc_float: true
+---
+
+```{r message=FALSE}
+library("terra")
+```
+
+# Wstęp
+
+Wczytajmy dane wektorowe Luksemburgu wykorzystane na pierwszych zajęciach.
+
+```{r}
+sciezka = system.file("ex/lux.shp", package = "terra")
+wektor = vect(sciezka)
+wektor
+```
+
+Warto zauważyć, że funkcja `vect()` poza standardowym odczytem oferuje więcej
+zaawansowanych możliwości:
+
+* wczytanie określonego zakresu przestrzennego
+* wczytanie określonych warstw
+* wczytanie określonego rodzaju danych (geometrie lub atrybuty)
+* tworzenie zapytań bazodanowych (SQL)
+* stworzenie wskaźnika do pliku (*proxy*)
+
+Zasadniczo, do atrybutów warstwy wektorowej możemy odwołać się na dwa sposoby
+używając:
+
+* znaku dolara `$` -- zwraca wektor bez geometrii
+* nawiasu kwadratowego `[]` -- zwraca geometrię z wybranymi atrybutami
+
+```{r}
+wektor$NAME_2
+```
+
+```{r}
+wektor[, "NAME_2"]
+```
+
+Oprócz tego, możemy pozyskać wszystkie atrybuty w postaci ramki danych używając
+funkcji `as.data.frame()`.
+
+# Operacje
+
+## Obliczanie powierzchni
+
+W celu obliczenia powierzchni poligonów należy zastosować funkcję `expanse()`.
+Ta funkcja automatycznie wykonuje obliczenia dla układów wyrażonych w stopniach,
+więc nie jest wymagana projekcja do planarnego układu współrzędnych. Można
+również określić jednostki, w których zwrócone będą wyniki przy pomocy argumentu
+`unit`.
+
+```{r}
+powierzchnia = expanse(wektor, unit = "km")
+data.frame(nazwa = wektor$NAME_2, powierzchnia)
+```
+
+## Generowanie punktów
+
+Można wygenerować punkty o rozkładzie regularnym (`method = "regular"`) lub
+losowych (`method = "random"`) na podstawie wejściowej geometrii używając
+funkcji `spatSample()`. Istnieje również możliwość próbkowania stratyfikowanego
+(wtedy dla każdego poligonu zostanie wygenerowanych $n$ punktów).
+
+```{r}
+proba = spatSample(wektor, size = 100, method = "random")
+plot(wektor)
+plot(proba, add = TRUE)
+```
+
+## Generowanie otoczki wypukłej
+
+Otoczka wypukła jest najmniejszym wielokątem wypukłym ograniczającym dany zbiór punktów.
+Innymi słowy, jest to wielokąt, którego wierzchołki stanowią najbardziej zewnętrzne
+punkty zbioru. Do jej wygenerowania służy funkcja `convHull()`.
+
+```{r}
+otoczka = convHull(wektor)
+plot(wektor)
+plot(otoczka, add = TRUE, border = "red")
+```
+
+## Generowanie buforów
+
+Bufory można wygenerować wykorzystując funkcje `buffer()`. Bufory obliczane są
+dla każdej geometrii osobno, w związku z czym, jeśli chcemy stworzyć jeden bufor
+musimy zastosować funkcję agregującą geometrie, tj. `aggregate()`; łączy ona
+wiele geometrii w jedną. Funkcja `buffer()` wymaga wskazania odległości
+bufora (argument `width`) i należy odnotować, że:
+
+* domyślną jednostką długości dla układu geograficznego są metry (nie stopnie)
+* argument `width` jest zwektoryzowany, zatem można określić różne odległości
+dla kolejnych geometrii
+
+```{r}
+bufor = buffer(aggregate(wektor), width = 1000)
+plot(wektor)
+plot(bufor, add = TRUE, border = "red")
+```
+
+## Generowanie centroidów
+
+Centroid jest to punkt określający geometryczny środek wielokąta. Dla wielokątów
+wypukłych (tj. kąty takiej figury są mniejsze niż 180°) wyliczany jest na podstawie
+średniej arytmetycznej współrzędnych wierzchołków. Jego wyznaczenie jest możliwe
+używając funkcji `centroids()`. W przypadku wielokątów wklęsłych centroid może
+znajdować się poza obiektem, wtedy może zastosować argument `inside = TRUE`,
+który wymusi przybliżoną lokalizację wewnątrz obiektu.
+
+```{r}
+centroidy = centroids(wektor, inside = FALSE)
+centroidy_wewnatrz = centroids(wektor, inside = TRUE)
+plot(wektor)
+plot(centroidy, add = TRUE, col = "blue")
+plot(centroidy_wewnatrz, add = TRUE, col = "orange")
+```
+
+## Obliczanie odległości
+
+W kolejnym kroku możemy obliczyć jak oddalone są centroidy od siebie używając
+funkcję `distance()`. Wymieniona funkcja również automatycznie wykonuje obliczenia
+dla układów geograficznych (jednostki w stopniach) i wynik domyślnie zwracany
+jest w metrach. Jeśli podamy jeden argument w funkcji, to zostaną wyliczone
+odległości każdego obiektu z każdym.
+
+```{r}
+odleglosci = distance(centroidy)
+```
+
+Jako wynik otrzymujemy obiekt klasy `dist`, który reprezentuje jako wektor dolną
+połowę macierzy odległości. Wykorzystując funkcję `as.matrix()` możemy przetransformować
+ten obiekt do pełnej macierzy.
+
+```{r}
+macierz_odleglosci = as.matrix(odleglosci)
+macierz_odleglosci[1:5, 1:5]
+```
+
+Dla ułatwienia możemy również kolumnom i wierszom nadać nazwy jednostek
+administracyjnych.
+
+```{r}
+colnames(macierz_odleglosci) = rownames(macierz_odleglosci) = centroidy$NAME_2
+# View(macierz_odleglosci) # wyświetl
+```
+
+## Relacje przestrzenne
+
+Do określenia [relacji przestrzennych](https://en.wikipedia.org/wiki/DE-9IM)
+między obiektami służy funkcja `relate()`. Dla przykładu możemy sprawdzić
+czy poligon zawiera (`relation = "contains"`) wylosowany punkt. Jako wynik
+funkcji zwracana jest macierz z wartościami logicznymi.
+
+```{r}
+proba = spatSample(wektor, size = 5, method = "random")
+plot(wektor)
+plot(proba, add = TRUE)
+```
+
+```{r}
+relate(wektor, proba, relation = "contains")
+```
+
+W wierszach zawarte są jednostki administracyjne, natomiast w kolumnach
+wylosowane punkty.
+
+## Docinanie
+
+Podobnie jak w przypadku danych rastrowych, możemy zmniejszyć zasięg warstwy
+wektorowej używając funkcję `crop()`.
+
+```{r}
+zasieg = ext(c(5.9, 6.3, 49.6, 49.9))
+wektor_dociety = crop(wektor, zasieg)
+```
+
+```{r}
+plot(wektor)
+plot(wektor_dociety, add = TRUE, border = "red")
+```
+
+Alternatywnie docięcie można wykonać używając funkcji `intersect()`.
+
+## Reprojekcja
+
+Reprojekcja danych wektorowych wygląda identycznie tak jak w przypadku
+danych rastrowych.
+
+```{r}
+wektor_3857 = project(wektor, "EPSG:3857")
+```
+
+Oczywiście w tej sekcji zostały zaprezentowane jedynie wybrane funkcje do
+przetwarzania danych wektorowych.
+
+# Zadanie
+
+1.
+
+Pobierz granice powiatów z Geoportalu, następnie wylicz ich centroidy
+i wskaż te powiaty, które są położone najbliżej i najdalej. Wskazówki:
+
+* Odległość obiektu od samego siebie wynosi 0 m i trzeba to wykluczyć.
+* Do znalezienia indeksu o minimalnej lub maksymalnej wartości można wykorzystać
+funkcje `which()` z argumentem `arr.ind = TRUE`.
+  
+Zastanów się również czy miasta na prawach powiatu nie zaburzają wyników analizy?
+Jeśli tak, to dlaczego?
+
+2.
+
+Ze strony [https://dane.gov.pl](https://dane.gov.pl/pl/dataset/792,numeryczny-model-terenu-o-interwale-siatki-co-najmniej-100-m)
+pobierz numeryczny model terenu w siatce 100 m dla wszystkich województw.
+Przygotuj mapę mediany wysokości oraz odchylenia standardowego wysokości dla
+wszystkich powiatów.
+
+Wskazówki:
+  
+* Dane udostępnione są w formacie tekstowym. Do ich wczytania możesz wykorzystać
+funkcję `read.table()`. Sprawdź jaki jest separator kolumn, separator dziesiętny,
+nagłówek kolumn oraz typ kolumn.
+* Jeśli wszystkie dane nie mieszczą się w pamięci, to najlepiej iterować partiami
+po województwach. W tym celu należy sprawdzić, które powiaty należą do danego
+województwa.
