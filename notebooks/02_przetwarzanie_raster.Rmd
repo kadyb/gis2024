@@ -53,10 +53,13 @@ values(raster) = wartosci
 raster
 ```
 
-Możemy również wyświetlić ten raster.
+Wyświetlmy obiekt `raster`. Dodatkowo możemy wyświetlić wartości komórek jako
+etykiety używając funkcji `text()` z argumentami określającymi liczbę znaków
+(`digits`) oraz rozmiar tekstu (`cex`).
 
 ```{r}
 plot(raster)
+text(raster, digits = 1, cex = 0.7)
 ```
 
 # Algebra rastrów
