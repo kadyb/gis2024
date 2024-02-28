@@ -54,6 +54,7 @@ Materiały dostępne są w postaci interaktywnych notebooków (R Markdown).
 * Klasyfikacja nadzorowana
 * Obliczenia równoległe
 * Optymalizacja kodu
+* Geointerfejsy
 
 # Zaliczenie
 
