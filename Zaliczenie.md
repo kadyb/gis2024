@@ -5,7 +5,7 @@ Proszę wybrać jeden z poniższych projektów.
 Projekt może zostać wykonany w grupie 2-3 osób.
 
 Wyniki projektu należy zaprezentować na zajęciach oraz przesłać raport końcowy
-(preferowany format to [R Markdown](https://rmarkdown.rstudio.com/)).
+(w formacie [R Markdown](https://rmarkdown.rstudio.com/) lub [Quarto](https://quarto.org/)).
 
 Każda osoba w grupie musi wykonać część pracy.
 W raporcie proszę wskazać jakie zadania zostały wykonane przez poszczególne osoby.
