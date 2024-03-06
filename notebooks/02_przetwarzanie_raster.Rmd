@@ -101,7 +101,7 @@ r
 plot(r, ext = ext(raster)) # porównaj z oryginalnym zasięgiem
 ```
 
-Należy zauważyć, że zasię dociętego rastra może się różnić od oczekiwanego,
+Należy zauważyć, że zasięg dociętego rastra może różnić się od oczekiwanego,
 ponieważ zwracane są pełne komórki w wierszach i kolumnach.
 
 ## Zmiana rozdzielczości
