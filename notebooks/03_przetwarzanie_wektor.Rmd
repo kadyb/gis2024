@@ -202,7 +202,7 @@ przetwarzania danych wektorowych.
 
 # Zadanie
 
-1.
+**1.**
 
 Pobierz granice powiatów z Geoportalu, następnie wylicz ich centroidy
 i wskaż te powiaty, które są położone najbliżej i najdalej. Wskazówki:
@@ -211,10 +211,12 @@ i wskaż te powiaty, które są położone najbliżej i najdalej. Wskazówki:
 * Do znalezienia indeksu o minimalnej lub maksymalnej wartości można wykorzystać
 funkcje `which()` z argumentem `arr.ind = TRUE`.
   
-Zastanów się również czy miasta na prawach powiatu nie zaburzają wyników analizy?
-Jeśli tak, to dlaczego?
+Zastanów się również jak na wyniki analizy wpływają:
 
-2.
+* miasta na prawach powiatu
+* [eksklawy powiatów](https://pl.wikipedia.org/wiki/Eksklawa#Powiaty)
+
+**2.**
 
 Ze strony [https://dane.gov.pl](https://dane.gov.pl/pl/dataset/792,numeryczny-model-terenu-o-interwale-siatki-co-najmniej-100-m)
 pobierz numeryczny model terenu w siatce 100 m dla wszystkich województw.
