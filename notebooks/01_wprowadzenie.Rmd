@@ -180,7 +180,8 @@ Do bardziej zaawansowanych wizualizacji możesz wykorzystać na przykład pakiet
 
 # Zadanie
 
-1. Wczytaj plik `logo.tif` z pakietu i sprawdź jego metadane.
-2. Pobierz dowolnie wybrane przez siebie dane z [Natural Earth](https://www.naturalearthdata.com/downloads/)
+**1.** Wczytaj plik `logo.tif` z pakietu i sprawdź jego metadane.
+
+**2.** Pobierz dowolnie wybrane przez siebie dane z [Natural Earth](https://www.naturalearthdata.com/downloads/)
 i przygotuj wizualizację. Funkcje `download.file()` oraz `unzip()` mogą być
 przydatne w tym celu.

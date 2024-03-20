@@ -202,9 +202,7 @@ przetwarzania danych wektorowych.
 
 # Zadanie
 
-**1.**
-
-Pobierz granice powiatów z Geoportalu, następnie wylicz ich centroidy
+**4.** Pobierz granice powiatów z Geoportalu, następnie wylicz ich centroidy
 i wskaż te powiaty, które są położone najbliżej i najdalej. Wskazówki:
 
 * Odległość obiektu od samego siebie wynosi 0 m i trzeba to wykluczyć.
@@ -216,9 +214,7 @@ Zastanów się również jak na wyniki analizy wpływają:
 * miasta na prawach powiatu
 * [eksklawy powiatów](https://pl.wikipedia.org/wiki/Eksklawa#Powiaty)
 
-**2.**
-
-Ze strony [https://dane.gov.pl](https://dane.gov.pl/pl/dataset/792,numeryczny-model-terenu-o-interwale-siatki-co-najmniej-100-m)
+**5.** Ze strony [https://dane.gov.pl](https://dane.gov.pl/pl/dataset/792,numeryczny-model-terenu-o-interwale-siatki-co-najmniej-100-m)
 pobierz numeryczny model terenu w siatce 100 m dla wszystkich województw.
 Przygotuj mapę mediany wysokości oraz odchylenia standardowego wysokości dla
 wszystkich powiatów.

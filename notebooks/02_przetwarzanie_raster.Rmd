@@ -267,7 +267,7 @@ dokumentację).
 
 # Zadanie
 
-Z portalu [OpenTopography](https://opentopography.org/) pobierz numeryczny
+**3.** Z portalu [OpenTopography](https://opentopography.org/) pobierz numeryczny
 model pokrycia terenu (np. NASADEM lub SRTM) i wykonaj następujące czynności:
 
 * sprawdź metadane pobranego rastra
