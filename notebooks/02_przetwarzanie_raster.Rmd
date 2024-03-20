@@ -268,12 +268,13 @@ dokumentację).
 # Zadanie
 
 **3.** Z portalu [OpenTopography](https://opentopography.org/) pobierz numeryczny
-model pokrycia terenu (np. NASADEM lub SRTM) i wykonaj następujące czynności:
+model pokrycia terenu (np. NASADEM lub SRTM) dla małego fragmentu Polski i
+wykonaj następujące czynności:
 
 * sprawdź metadane pobranego rastra
+* transformuj układ współrzędnych do `EPSG:2180`
 * przytnij zasięg przestrzenny o 10% z każdej strony
 (tj. `0.9 * c(xmax, ymax)` i `1.1 * c(xmin, ymin)`)
-* transformuj układ współrzędnych do `EPSG:2180`
 * wygładź wartości używając średniej arytmetycznej w oknie ruchomym
 * oblicz statystyki rastra, tj. wartość minimalna i maksymalna,
 średnia oraz odchylenie standardowe
