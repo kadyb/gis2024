@@ -1,10 +1,6 @@
 library("terra")
 sciezka=system.file("ex/logo.tif", package = "terra")
 
-logo=rast(sciezka)
-logo
-setwd("D:/Studia_xD/Rok4/ZAP/roboczyZAP")
-
 url= "https://naciscdn.org/naturalearth/110m/physical/ne_110m_land.zip"
 download.file(url, "ne_110_land.zip", mode = "wb")
 unzip("ne_110_land.zip", exdir = "ne_110_land1")
