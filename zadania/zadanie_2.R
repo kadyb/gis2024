@@ -1,7 +1,6 @@
 library("terra")
-sciezka=system.file("ex/logo.tif", package = "terra")
 
-url= "https://naciscdn.org/naturalearth/110m/physical/ne_110m_land.zip"
+url="https://naciscdn.org/naturalearth/110m/physical/ne_110m_land.zip"
 download.file(url, "ne_110_land.zip", mode = "wb")
 unzip("ne_110_land.zip", exdir = "ne_110_land1")
 
@@ -17,4 +16,3 @@ land
 
 plot(land, background="lightblue", col="lightgreen", main="Mapa Świata")
 plot(lakes, add=TRUE,col="blue")
-
