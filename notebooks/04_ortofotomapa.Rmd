@@ -49,7 +49,7 @@ obrazu (piksel). Im mniejsza komórka, tym więcej szczegółów reprezentuje.
 Zbyt duży rozmiar oznacza, że poszczególne obiekty na zdjęciu przestają być
 rozpoznawalne.
 * **Kompozycja** -- obrazy analogowe są przedstawione w odcieniach szarości,
-natomiast obrazy cyfrowe mogą skladać się z naturalnych kolorów (RGB) lub
+natomiast obrazy cyfrowe mogą składać się z naturalnych kolorów (RGB) lub
 bliskiej podczerwieni (NIR)
 
 ## Wyszukiwanie
@@ -119,7 +119,7 @@ dane[order(-dane$year), ]
 ## Pobieranie
 
 Jako przykład pobierzmy dwie kompozycje tego samego obszaru wykonane w naturalnych
-barwach i z kanałem blikskiej podczerwieni z 2022 r.
+barwach i z kanałem bliskiej podczerwieni z 2022 r.
 (ID: `76746_1143331_M-34-34-A-c-2-3` i `76745_1143332_M-34-34-A-c-2-3`).
 
 ```{r}
