@@ -54,44 +54,41 @@ bliskiej podczerwieni (NIR)
 
 ## Wyszukiwanie
 
-Centroid (środek geometryczny) Lublina znajduje się na 22,56° długości
-geograficznej (X) i 51,22° szerokości geograficznej (Y). W celu wygenerowania tego
-punktu, możemy uprzednio stworzyć macierz, gdzie w wierszach znajdą się punkty
-(w naszym przypadku tylko jeden), a w kolumnach kolejno współrzędne X i Y. Następnie
-należy dokonać konwersji do obiektu wektorowego używając funkcji `vect()`
-i definiując układ współrzędnych.
+W katalogu `dane` znajduje się warstwa poligonowa `Lublin.gpkg`, która reprezentuje
+granicę Lublina w układzie `EPSG:2180`.
 
 ```{r}
-wspolrzedne = matrix(c(22.56, 51.22), ncol = 2)
-centroid = vect(wspolrzedne, type = "points", crs = "EPSG:4326")
-centroid
+lublin = vect("../dane/Lublin.gpkg")
+lublin
 ```
 
-Dokonajmy również konwersji ze współrzędnych geograficznych na układ metryczny
-`EPSG:2180`.
+Funkcja `perim()` pozwala obliczyć długość granicy, natomiast funkcja `expanse()`
+wskazuje powierzchnię obszaru.
 
 ```{r}
-centroid = project(centroid, "EPSG:2180")
+perim(lublin) / 1000 # wynik w km
+expanse(lublin, unit = "km")
 ```
 
-W kolejnym kroku stwórzmy bufor, który częściowo pokryje obszar miasta.
+Kolejny etap dotyczy wyszukania dostępnych danych dla naszego obszaru zainteresowania.
+Dla uproszczenie wyznaczmy centroid. Jego współrzędne można odczytać używając
+funkcji `crds()`.
 
 ```{r}
-bufor = buffer(centroid, width = 1000)
+punkt = centroids(lublin)
+crds(punkt)
 ```
 
-Stworzyliśmy bufor o szerokości 1 km, a teraz przygotujmy prostą wizualizację.
-
 ```{r}
-plot(bufor, main = "Bufor Lublin")
-plot(centroid, add = TRUE)
+
+plot(lublin, main = "Lublin")
+plot(punkt, col = "blue", add = TRUE)
 ```
 
-Kolejny etap, po określeniu obszaru zainteresowania, związany jest z wyszukaniem
-dostępnych danych. W tym celu wykorzystamy funkcję `ortho_request()`.
+Teraz wyszukajmy dostępne dane za pomocą funkcji `ortho_request()`.
 
 ```{r}
-dane = ortho_request(bufor)
+dane = ortho_request(punkt)
 ```
 
 Możemy wyświetlić część otrzymanej ramki danych lub alternatywnie przeglądać
@@ -120,10 +117,10 @@ dane[order(-dane$year), ]
 
 Jako przykład pobierzmy dwie kompozycje tego samego obszaru wykonane w naturalnych
 barwach i z kanałem bliskiej podczerwieni z 2022 r.
-(ID: `76746_1143331_M-34-34-A-c-2-3` i `76745_1143332_M-34-34-A-c-2-3`).
+(ID: `76746_1143325_M-34-34-A-c-1-4` i `76745_1143326_M-34-34-A-c-1-4`).
 
 ```{r}
-id = c("76746_1143331_M-34-34-A-c-2-3", "76745_1143332_M-34-34-A-c-2-3")
+id = c("76746_1143325_M-34-34-A-c-1-4", "76745_1143326_M-34-34-A-c-1-4")
 dane_sel = dane[dane$filename %in% id, ]
 ```
 
@@ -174,4 +171,5 @@ b) do jednego wirtualnego pliku *.vrt* używając funkcji `vrt()`
 Sprawdź zajmowaną ilość miejsca przez te pliki na dysku wykorzystując
 funkcję `file.size()` (wynik zwracany jest w bajtach). Sprawdź również zawartość
 pliku *.vrt* (czym on jest w rzeczywistości?). Następnie, zmniejsz rozdzielczość
-mozaiki do 10 m i zapisz wynik.
+mozaiki do 10 m i zapisz wynik. Jak zmieniła się jakość w stosunku do
+oryginalnego zdjęcia?
