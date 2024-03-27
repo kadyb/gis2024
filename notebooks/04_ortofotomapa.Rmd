@@ -80,7 +80,6 @@ crds(punkt)
 ```
 
 ```{r}
-
 plot(lublin, main = "Lublin")
 plot(punkt, col = "blue", add = TRUE)
 ```
