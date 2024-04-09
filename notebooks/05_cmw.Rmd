@@ -1,0 +1,329 @@
+---
+title: "Cyfrowe modele wysokościowe"
+author: "Krzysztof Dyba"
+output:
+  html_document:
+    toc: yes
+    toc_float: true
+---
+
+```{r message=FALSE}
+library("terra")
+library("rgugik")
+```
+
+# Wstęp
+
+## Cyfrowe modele wysokościowe
+
+Cyfrowe modele wysokościowe to modele opisujące powierzchnię terenu. Powstają
+w wyniku obróbki zdjęć lotniczych, skanowania laserowego (LiDAR), pomiarów
+geodezyjnych czy interferometrii radarowej (InSAR). CMW są jednym z kluczowych
+zbiorów danych w systemach informacji geograficznej i stanowią podstawę wielu
+środowiskowych analiz przestrzennych. Ponadto są źródłem produktów pochodnych,
+takich jak cieniowanie, nachylenie czy szorstkość terenu.
+
+CMW to ogólna nazwa grupy modeli o różnych cechach, uwzględniając:
+
+* Numeryczny model terenu (*Digital Terrain Model*) -- reprezentacja
+pozbawiona jakichkolwiek obiektów nad powierzchnią terenu, takich jak
+budynki czy drzewa.
+* Numeryczny model pokrycia terenu (*Digital Surface Model*) -- reprezentacja
+terenu wraz z jego pokryciem.
+
+<center>
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/DTM_DSM.svg/1024px-DTM_DSM.svg.png){ width=50% }
+<p style="font-size:12px;">
+https://commons.wikimedia.org/w/index.php?title=File:DTM_DSM.svg
+</p>
+</center>
+
+Cechy CMW:
+
+* **Format** -- można wyróżnić trzy główne struktury: GRID (regularna siatka punktów
+/ komórek), TIN (nieregularna topologiczna sieć trójkątów) oraz linie konturowe
+(dane wektorowe). Obecnie najczęściej używanym formatem jest GRID.
+* **Dokładność** -- związana jest z pionowym błędem pomiaru.
+* **Rozdzielczość przestrzenna** -- związana jest z rozmiarem najmniejszego
+obiektu, który może zostać wykryty przez czujnik i jest określana przez rozmiar
+komórki obrazu (piksel). Im większa komórka, tym bardziej uogólniona forma terenu.
+
+## Meteoryt Morasko
+
+Naszym obszarem analiz jest rezerwat przyrody Meteoryt Morasko położony w północnej
+części Poznania. Został on utworzony w 1976 roku w celu ochrony obszaru kraterów
+uderzeniowych, które według badaczy powstały w wyniku upadku meteorytu Morasko
+około 5 tysięcy lat temu. Ponadto ochroną objęty jest las grądowy z rzadkimi
+gatunkami roślin i ptaków.
+
+<center>
+![](https://naukawpolsce.pl/sites/default/files/styles/strona_glowna_slider_750x420/public/201710/17902027_12677530.jpg){ width=70% }
+<p style="font-size:12px;">
+https://naukawpolsce.pl/aktualnosci/news%2C402631%2Csto-lat-temu-odkryto-pierwszy-fragment-meteorytu-morasko.html
+</p>
+</center>
+
+Więcej informacji znajdziesz tutaj:
+
+* [Muzeum Ziemi WNGIG](https://muzeumziemi.amu.edu.pl/kolekcja-meteorytow/)
+* [Ścieżka dydaktyczna](https://www.astro.amu.edu.pl/pl/popularyzacja/sciezka-morasko/)
+* [Łowcy meteorytów, Discovery](https://www.youtube.com/watch?v=-i10oYQIkeI)
+
+# Analiza
+
+## Pozyskanie danych
+
+Centroid (środek geometryczny) rezerwatu Morasko znajduje się na 16,895° długości
+geograficznej (X) i 52,489° szerokości geograficznej (Y). W celu wygenerowania
+tego punktu, możemy uprzednio stworzyć macierz, gdzie w wierszach znajdą się
+punkty (w naszym przypadku tylko jeden), a w kolumnach kolejno współrzędne X i Y.
+Następnie należy dokonać konwersji do obiektu wektorowego używając funkcji
+`vect()` i definiując układ współrzędnych.
+
+```{r}
+wspolrzedne = matrix(c(16.895, 52.489), ncol = 2)
+centroid = vect(wspolrzedne, type = "points", crs = "EPSG:4326")
+centroid
+```
+
+Dokonajmy również konwersji ze współrzędnych geograficznych na układ metryczny
+`EPSG:2180`.
+
+```{r}
+centroid = project(centroid, "EPSG:2180")
+```
+
+W kolejnym kroku stwórzmy przybliżoną strefę, która obejmie obszar rezerwatu.
+
+```{r}
+bufor = buffer(centroid, width = 400)
+```
+
+Stworzyliśmy bufor o szerokości 400 m, a teraz przygotujmy prostą wizualizację.
+
+```{r}
+plot(bufor, main = "Bufor rezerwatu Morasko")
+plot(centroid, col = "blue", add = TRUE)
+```
+
+Następnie możemy wyszukać dostępne dane wysokościowe dla tego obszaru za pomocą
+funkcji `DEM_request()` (jest ona analogiczna do funkcji `ortho_request()`).
+Jako argument musimy wskazać nasz utworzony poligon.
+
+```{r}
+dane = DEM_request(centroid)
+```
+
+Oczywiście pozyskane dane możemy sprawdzić wywołując obiekt `dane` lub przejrzeć
+je interaktywnie używając funkcji `View()`.
+
+```{r}
+# wyświetl 10 pierwszych wierszy i 6 pierwszych kolumn
+dane[1:10, 1:6]
+```
+
+Jak możemy zauważyć powyższe metadane opisują produkty o różnych formatach,
+aktualności, rozdzielczości oraz dokładności. Do naszej analizy potrzebujemy
+numerycznego modelu terenu (DTM) i numerycznego modelu pokrycia terenu (DSM)
+w formacie "ARC/INFO ASCII GRID". Dokonajmy selekcji danych, tworząc dwie ramki
+danych i następnie łącząc je ze sobą przy pomocy funkcji `rbind()`.
+
+```{r}
+DTM_sel = dane[dane$format == "ARC/INFO ASCII GRID" &
+               dane$product == "DTM" &
+               dane$year == 2019, ]
+DSM_sel = dane[dane$format == "ARC/INFO ASCII GRID" &
+               dane$product == "DSM" &
+               dane$year == 2019, ]
+
+# połączenie powyższych ramek danych
+dane_sel = rbind(DTM_sel, DSM_sel)
+dane_sel[, 1:6]
+```
+
+Wykorzystajmy funkcję `tile_download()` do pobrania tych dwóch produktów.
+
+```{r message=FALSE, results="hide"}
+options(timeout = 600)
+tile_download(dane_sel, outdir = "dane")
+```
+
+## Przetworzenie danych
+
+Po pobraniu danych możemy je wczytać do sesji.
+
+```{r}
+DTM = rast("dane/73044_917579_N-33-130-D-b-1-1.asc")
+DSM = rast("dane/73043_917495_N-33-130-D-b-1-1.asc")
+```
+
+Możemy również nadać warstwom odpowiednie nazwy oraz, co ważniejsze, przypisać
+im układy współrzędnych zdefiniowane w obiekcie `dane_sel` (atrybut `CRS`).
+
+```{r}
+# nadanie nazw warstwom
+names(DTM) = "DTM"
+names(DSM) = "DSM"
+
+# ustawienie układu współrzędnych
+crs(DTM) = crs(DSM) = "EPSG:2180"
+```
+
+Podczas pobierania prawdopodobnie zauważyłeś, że rastry różnią się czterokrotnie
+rozmiarem. Wynika to z różnicy ich rozdzielczości przestrzennej. W takiej sytuacji
+należy ujednolicić je do jednakowej rozdzielczości, aby móc je połączyć (nałożyć
+na siebie). Znacznie lepiej jest użyć niższej rozdzielczości niż ją sztucznie
+zwiększać, ponieważ nie możemy uzyskać więcej informacji, a przetwarzanie będzie
+szybsze. W tym celu użyjmy funkcji `resample()` i zapiszmy wynik na dysku
+określając ścieżkę w argumencie `filename`.
+
+```{r}
+DSM = resample(DSM, DTM, method = "near", filename = "dane/DSM_1.tif")
+```
+
+Teraz oba modele mają te same wymiary (liczbę wierszy i kolumn) oraz rozdzielczość
+przestrzenną. Możemy więc połączyć je w jeden obiekt o nazwie `DEM`.
+
+```{r}
+DEM = c(DTM, DSM)
+nlyr(DEM)
+```
+
+Używając funkcji `crop()` możemy ograniczyć zasięg przestrzenny (*bounding box*)
+do zasięgu przestrzennego rezerwatu Morasko. W celu wykluczenia z analizy wartości
+poza obszarem poligonu, należy zastosować funkcję `mask()`. Można tę czynność
+również wykonać w jednym kroku, używają funkcji `crop()` z argumentem `mask = TRUE`.
+
+```{r}
+DEM_crop = crop(DEM, bufor)
+DEM_mask = mask(DEM_crop, bufor)
+
+# alternatywnie
+DEM = crop(DEM, bufor, mask = TRUE)
+```
+
+Zauważ, że domyślnie kolory zielony reprezentuje wysokie wartości, a kolor
+pomarańczowy niskie. Do wizualizacji danych topograficznych warto odwrócić
+paletę kolorów, tj. `terrain.colors(99, alpha = NULL)`.
+
+```{r}
+par(mfrow = c(1, 2)) # wyświetl 2 rastry obok siebie
+plot(DEM_crop$DTM, main = "Docięcie", col = terrain.colors(99, alpha = NULL))
+plot(bufor, add = TRUE)
+plot(DEM_mask$DTM, main = "Maskowanie", col = terrain.colors(99, alpha = NULL))
+plot(bufor, add = TRUE)
+```
+
+W pierwszej ćwiartce okręgu widzimy pięć mniejszych okręgów. Są to kratery
+powstałe po uderzeniu meteorytu Morasko. Największy znaleziony fragment waży
+272 kg i jest największym meteorytem znalezionym w Polsce. Kolekcję znalezionych
+meteorytów można oglądać w [Muzeum Ziemi WNGIG]((https://muzeumziemi.amu.edu.pl/kolekcja-meteorytow/))
+w Poznaniu.
+
+Obliczmy szerokość krateru na podstawie poprzecznego profilu terenu. Najprościej
+taki profil narysować w trybie interaktywnym przy pomocy funkcji `draw("line")`
+w następujący sposób:
+
+```r
+plot(DEM$DTM)
+profil = draw("line", n = 2)
+# klikamy punkty na mapie
+```
+
+Jednakże, na potrzeby skryptu, przyjmijmy że punkt **A** ma współrzędne
+`(357280, 515980)`, a punkt **B** `(357122, 515760)`.
+
+```{r}
+punkty = matrix(c(357280, 515980,
+                  357122, 515760),
+                ncol = 2, byrow = TRUE)
+linia = vect(punkty, type = "lines", crs = "EPSG:2180")
+linia
+```
+
+```{r}
+plot(DEM$DTM, main = "DTM [m]", col = terrain.colors(99, alpha = NULL))
+plot(linia, col = "red", lwd = 2, add = TRUE)
+text("A", x = 357320, y = 515980, cex = 0.8)
+text("B", x = 357100, y = 515760, cex = 0.8)
+```
+
+W kolejnym kroku pozyskamy wartości wysokości dla wyznaczonego profilu za pomocą
+funkcji `extract()`.
+
+```{r}
+profil = extract(DEM, linia)
+profil = profil$DTM
+plot(profil, type = "l", xlab = "Indeks komórki", ylab = "Wysokość n.p.m. [m]")
+```
+
+Na profilu widoczny jest szum wynikający z metody pozyskania danych. Można
+to wygładzić w prosty sposób wykorzystując funkcję `loess()`.
+
+```{r}
+profil = loess(profil ~ seq_along(profil), span = 0.1)
+profil = profil$fitted
+plot(profil, type = "l", xlab = "Indeks komórki", ylab = "Wysokość n.p.m. [m]")
+```
+
+Powyższe ryciny na osi X zawierają indeks komórki. Lepszym rozwiązaniem będzie
+przedstawienie tej osi jako odległości od punktu startowego (**A**). Aby to
+wykonać musimy obliczyć średnią odległość między komórkami, czyli podzielić
+długość linii przez liczbę komórek.
+
+```{r}
+odleglosc = perim(linia) / length(profil)
+odleglosc
+```
+
+Następnie stwórzmy wektor odległości kolejnych punktów od punktu startowego
+wykorzystując sumę skumulowaną `cumsum()`.
+
+```{r}
+odleglosc = cumsum(rep(odleglosc, length(profil)))
+odleglosc[1:5] # odległość pierwszych 5 punktów
+```
+
+Po tej operacji, możemy zaprezentować finalną wersję wykresu z zaznaczonym
+zasięgiem największego krateru uderzeniowego wynoszącą około 90 m.
+
+```{r}
+plot(profil ~ odleglosc, type = "l", xlab = "Odległość [m]",
+     ylab = "Wysokość n.p.m. [m]", main = "Numeryczny model terenu")
+abline(v = c(50, 140), col = "blue")
+```
+
+W ostatnim kroku sprawdźmy wysokość obiektów (na tym obszarze są to drzewa).
+W tym celu należy odjąć NMT od NMPT. Różnica nazywana jest znormalizowanym NMPT,
+ponieważ przyjmuje wysokość terenu jako odniesienie.
+
+```{r}
+nDSM = DEM$DSM - DEM$DTM
+
+# nadpisz wartości poniżej 0
+nDSM
+nDSM[nDSM < 0] = 0
+```
+
+Powyższą operację odejmowania można wykonać również używając funkcji `lapp()`.
+
+```{r}
+plot(nDSM, main = "Wysokość drzew [m]",
+     col = hcl.colors(9, palette = "Greens", rev = TRUE))
+```
+
+# Zadanie
+
+**7.** Wykonaj analizę ukształtowania terenu wybranego obszaru, w której
+uwzględnisz:
+
+* wizualizacje NMT i NMPT
+* statystyki opisowe wysokości terenu
+* profil wysokościowy
+* wizualizacje wysokości obiektów (znormalizowany NMPT)
+
+Pamiętaj, że:
+
+* Rastry powinny posiadać taką samą rozdzielczość przestrzenną oraz układ
+współrzędnych
+* Różnica między NMPT a NMT nie może być ujemna
