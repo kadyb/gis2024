@@ -299,9 +299,9 @@ ponieważ przyjmuje wysokość terenu jako odniesienie.
 
 ```{r}
 nDSM = DEM$DSM - DEM$DTM
+nDSM
 
 # nadpisz wartości poniżej 0
-nDSM
 nDSM[nDSM < 0] = 0
 ```
 

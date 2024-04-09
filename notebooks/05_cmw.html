@@ -1743,8 +1743,6 @@ drzewa). W tym celu należy odjąć NMT od NMPT. Różnica nazywana jest
 znormalizowanym NMPT, ponieważ przyjmuje wysokość terenu jako
 odniesienie.</p>
 <pre class="r"><code>nDSM = DEM$DSM - DEM$DTM
-
-# nadpisz wartości poniżej 0
 nDSM</code></pre>
 <pre><code>## class       : SpatRaster 
 ## dimensions  : 800, 800, 1  (nrow, ncol, nlyr)
@@ -1756,7 +1754,8 @@ nDSM</code></pre>
 ## name        :       DSM 
 ## min value   : -4.159996 
 ## max value   : 32.459999</code></pre>
-<pre class="r"><code>nDSM[nDSM &lt; 0] = 0</code></pre>
+<pre class="r"><code># nadpisz wartości poniżej 0
+nDSM[nDSM &lt; 0] = 0</code></pre>
 <p>Powyższą operację odejmowania można wykonać również używając funkcji
 <code>lapp()</code>.</p>
 <pre class="r"><code>plot(nDSM, main = &quot;Wysokość drzew [m]&quot;,
