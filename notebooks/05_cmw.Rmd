@@ -216,8 +216,8 @@ plot(bufor, add = TRUE)
 
 W pierwszej ćwiartce okręgu widzimy pięć mniejszych okręgów. Są to kratery
 powstałe po uderzeniu meteorytu Morasko. Największy znaleziony fragment waży
-272 kg i jest największym meteorytem znalezionym w Polsce. Kolekcję znalezionych
-meteorytów można oglądać w [Muzeum Ziemi WNGIG]((https://muzeumziemi.amu.edu.pl/kolekcja-meteorytow/))
+272 kg i jest największym meteorytem znalezionym w Polsce. Kolekcję można
+zobaczyć w [Muzeum Ziemi WNGIG]((https://muzeumziemi.amu.edu.pl/kolekcja-meteorytow/))
 w Poznaniu.
 
 Obliczmy szerokość krateru na podstawie poprzecznego profilu terenu. Najprościej
@@ -227,7 +227,7 @@ w następujący sposób:
 ```r
 plot(DEM$DTM)
 profil = draw("line", n = 2)
-# klikamy punkty na mapie
+# klikamy punkt początkowy i końcowy na mapie
 ```
 
 Jednakże, na potrzeby skryptu, przyjmijmy że punkt **A** ma współrzędne
