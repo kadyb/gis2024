@@ -1,5 +1,5 @@
 library("terra")
-raster1=rast("D:/Studia_xD/Rok4/ZAP/output_NASADEM.tif")
+raster1=rast("D:/Studia_xD/Rok4/ZAP/Lublin_DEM.tif")
 
 #1
 raster1
