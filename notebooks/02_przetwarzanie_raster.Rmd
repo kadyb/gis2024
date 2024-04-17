@@ -271,12 +271,11 @@ dokumentację).
 model pokrycia terenu (np. NASADEM lub SRTM) dla małego fragmentu Polski i
 wykonaj następujące czynności:
 
-* sprawdź metadane pobranego rastra
+* sprawdź metadane pobranego rastra i wyświetl go
 * transformuj układ współrzędnych do `EPSG:2180`
 * przytnij zasięg do mniejszego obszaru wyznaczając go przy pomocy funkcji
 `draw(x = "extent")` (wymaga wskazania dwóch wierzchołków)
 * wygładź wartości używając średniej arytmetycznej w oknie ruchomym
 * oblicz statystyki rastra, tj. wartość minimalna i maksymalna,
 średnia oraz odchylenie standardowe
-* przygotuj wizualizację
 * zapisz raster na dysku z kompresją LZW

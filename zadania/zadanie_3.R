@@ -44,8 +44,4 @@ data.frame(
 )
 
 #6
-par(mfrow = c(1, 1))
-plot(rasFocal, main="Lublin", col = gray.colors(n = 20))
-
-#7
 writeRaster(rasFocal, filename = "raster.tif", gdal = c("COMPRESS=LZW"))
