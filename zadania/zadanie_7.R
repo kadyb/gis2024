@@ -87,3 +87,28 @@ nDSM
 plot(nDSM)
 
 
+# Obliczanie statystyk dla rastra DTM
+values_DTM <- values(DTM)
+mean_DTM <- mean(values_DTM, na.rm = TRUE)
+median_DTM <- median(values_DTM, na.rm = TRUE)
+sd_DTM <- sd(values_DTM, na.rm = TRUE)
+
+# Obliczanie statystyk dla rastra DSM
+values_DSM <- values(DSM)
+mean_DSM <- mean(values_DSM, na.rm = TRUE)
+median_DSM <- median(values_DSM, na.rm = TRUE)
+sd_DSM <- sd(values_DSM, na.rm = TRUE)
+
+# Wyświetlenie wyników
+print("Statystyki dla rastra DTM:")
+print(paste("Średnia DTM:", mean_DTM))
+print(paste("Mediana DTM:", median_DTM))
+print(paste("Odchylenie standardowe DTM:", sd_DTM))
+
+print("Statystyki dla rastra DSM:")
+print(paste("Średnia DSM:", mean_DSM))
+print(paste("Mediana DSM:", median_DSM))
+print(paste("Odchylenie standardowe DSM:", sd_DSM))
+
+
+
