@@ -1,0 +1,261 @@
+---
+title: "Interpolacja przestrzenna"
+author: "Krzysztof Dyba"
+output:
+  html_document:
+    toc: yes
+    toc_float: true
+---
+
+```{r message=FALSE}
+library("terra")
+```
+
+# Wstęp
+
+**Interpolacja przestrzenna** jest to metoda wykorzystywana do oszacowania
+nieznanych wartości zmiennej (cechy) na badanym obszarze na podstawie
+zmierzonych wartości w określonych lokalizacjach. Dzięki niej możliwe jest
+wypełnienie luk w zbiorze danych, tj. obszarów nieobjętych pomiarem.
+
+Istnieją dwa zasadnicze podejścia do interpolacji przestrzennej:
+
+* modele deterministyczne -- zakładają, że istnieje prosta zależność przestrzenna
+bez uwzględnienia losowości i niepewności:
+  * Naturalna interpolacja sąsiadów (*Natural neighbor interpolation*)
+  * Interpolacja wielomianowa (*Polynomial interpolation*)
+  * Odwrotne ważenie odległości (*Inverse Distance Weighting*)
+  * Interpolacja funkcjami sklejanymi (*Spline interpolation*)
+  * Interpolacja radialną funkcją bazową (*Radial Basis Function interpolation*)
+  
+* modele geostatystyczne -- uwzględniają właściwości statystyczne rozkładu
+przestrzennego danych (autokorelację), dzięki czemu możliwe jest zbadanie
+wariancji w zależności od kierunku i odległości:
+  * Prosty kriging (*Simple Kriging*)
+  * Zwyczajny kriging (*Ordinary Kriging*)
+  * Uniwersalny kriging (*Universal Kriging*)
+  * Kriging blokowy (*Block Kriging*)
+  * Co-kriging
+
+# Interpolacja
+
+## Przygotowanie danych
+
+W katalogu `dane` znajdziesz plik `dane_meteo.csv` z pomiarami średniej
+temperatury dobowej (°C) oraz sumy dobowej opadów (mm) pochodzących ze stacji
+meteorologicznych Instytutu Meteorologii i Gospodarki Wodnej
+(https://danepubliczne.imgw.pl/).
+
+Wczytajmy go używając funkcji `read.csv()` i wyświetlmy jego strukturę za pomocą
+funkcji `str()`.
+
+```{r}
+meteo_df = read.csv("../dane/dane_meteo.csv")
+str(meteo_df)
+```
+
+Do obliczenia podstawowych statysyk opsiowych temperatury możemy wykorzystać
+funkcję `summary()`.
+
+```{r}
+summary(meteo_df$TEMP)
+```
+
+Dodatkowo, możemy sprawdzić rozkład wartości temperatury używając funkcji `hist()`.
+
+```{r}
+hist(meteo_df$TEMP, main = NULL, breaks = 10, xlab = "Temperatura [°C]",
+     ylab = "Częstość" )
+```
+
+W kolejnym kroku dokonajmy konwersji ramki danych do obiektu przestrzennego,
+tj. *SpatVector*. W tym celu należy użyć funkcji `vect()` określająć nazwy
+kolumn z długością i szerokością geograficzną (argument `geom`) oraz układ
+współrzędnych (argument `crs`).
+
+```{r}
+meteo = vect(meteo_df, geom = c("X", "Y"), crs = "EPSG:4326")
+meteo
+```
+
+Następnie możemy wyświetlić dane z uwzględnieniem typu stacji meteorologicznej.
+
+```{r}
+plot(meteo, "TYP", col = c("purple", "blue"), alpha = 0.7,
+     main = "Stacje meteorologiczne")
+```
+
+Oraz sprawdzić przestrzenny rozkład temperatur definiując wcześniej wybraną
+paletę kolorów, np. z funkcji `hcl.colors()`.
+
+```{r}
+paleta = hcl.colors(10, palette = "RdYlBu", rev = TRUE)
+plot(meteo, "TEMP", type = "continuous", col = paleta,
+     main = "Temperatura [°C]")
+```
+
+Zasadniczym celem interpolacji jest stworzenie ciągłej powierzchni (rastra) na
+podstawie danych dyskretnych (punktowych). Wymaga to zdefiniowania siatki, dla
+której każdej komórce zostanie przypisana estymowana wartość. Do stworzenia
+takiej siatki można zastosować funkcję `rast()` określając podstawowe parametry
+takie jak liczba wierszy i kolumn, zakres przestrzenny oraz układ przestrzenny.
+
+W naszym przypadku możemy skopiować metadane z obiektu wektorowego `meteo` i
+wskazać rozdzielczość jako 0.01 stopnia.
+
+```{r}
+r = rast(meteo, resolution = 0.01)
+r
+```
+
+## Walidacja wyników
+
+Tworzenie modeli zawsze wymaga sprawdzenia ich skuteczności na niezależnym
+zbiorze danych. Proces ten nazywany jest walidacją (inaczej testowaniem).
+Celem walidacji jest ocena, jak model będzie działał na nowych, wcześniej
+niewidzianych danych, co ma kluczowe znaczenie dla określenia jego poprawności
+i przydatności. Wyróżnić można kilka metod walidacji, jednak dwie najważniejsze
+to:
+
+* walidacja podzbiorem (*train / test split*) -- zbiór danych wejściowych
+dzielony jest na dwa podzbiory: zbiór treningowy (używany do trenowania modelu)
+oraz zbiór testowy (używany do oceny skuteczności wytrenowanego modelu)
+* walidacja krzyżowa (*k-fold cross-validation*) -- zbiór danych wejściowych
+dzielony jest na kilka mniejszych podzbiorów (*fold*), np. 5 lub 10. Każdy
+podzbiór używany jest jednokrotnie jako testowy, a pozostałe podzbiory używane
+są do trenowania modelu. Proces ten powtarzany jest $k$ razy, zapewniając, że
+wszystkie podzbiory wykorzystywane są zarówno do szkolenia, jak i testowania.
+Umożliwia to bardziej wiarygodne oszacowanie skuteczności modelu.
+
+Na potrzeby niniejszej analizy wykorzystamy pierwszą prostszą metodę, tj.
+walidację podzbiorem. Ogólnie przyjmuje się, że dane testowe powinny stanowić
+około 30% wejściowego zbioru danych, natomiast dane treningowe około 70%.
+Podziału na podzbiory można dokonać używająć funkcji `sample()` w celu wylosowania
+indeksów obserwacji, które trafią do podzbioru treningowego. Pozostałe obserwacje
+można przypisać do podzbioru testowego.
+
+Zauważ, że losowanie za każdym razem zwraca różne indeksy. Oznacza to, że
+podczas ponownego wykonywania skryptu otrzymujemy inny wynik, co tym samym powoduje,
+że analiza przestaje być powtarzalna / odtwarzalna. Aby temu zapobiec należy ustawić
+ziarno losowości przy pomocy funkcji `set.seed()`.
+
+```{r}
+set.seed(1)
+n = nrow(meteo_df)
+indeksy = sample(n, size = 0.7 * n)
+trening = meteo_df[indeksy, ]
+test = meteo_df[-indeksy, ]
+```
+
+Sprawdźmy podział punktów pomiarowych na mapie. 
+
+```{r}
+plot(meteo[indeksy], col = "green", alpha = 0.8)
+plot(meteo[-indeksy], col = "blue", alpha = 0.8, add = TRUE)
+add_legend("bottomleft", legend = c("Treningowe", "Testowe"),
+           col = c("green", "blue"), pch = 19, cex = 0.9)
+```
+
+Walidacja modelu obejmuje wykorzystanie różnych wskaźników (metryk) do oceny jego
+skuteczności. W zależności od problemu badawczego i celu oceny można zastosować
+różne metryki. W naszej analizie wykorzystamy najpopularniejszą metrykę stosowaną
+w problemach z zakresu regresji, tj. spierwiastkowany błąd średniokwadratowy
+(*Root Mean Squared Error*), niemniej nie jest to jedyny wskaźnik.
+
+```{r}
+RMSE = function(obserwowane, predykcja) {
+  sqrt(mean((predykcja - obserwowane) ^ 2))
+}
+```
+
+Im większa wartość tej metryki, tym większy błąd.
+
+## Metody interpolacji
+
+Pakiet **gstat** oferuje szereg metod do modelowania przestrzennego.
+
+```{r}
+library("gstat")
+```
+
+### Naturalna interpolacja sąsiadów
+
+```{r}
+mdl = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = trening, nmax = 10,
+            set = list(idp = 0))
+nn = interpolate(r, mdl, xyNames = c("X", "Y"), debug.level = 0)
+nn = subset(nn, 1) # wybiera tylko pierwszą warstwę
+plot(nn, col = paleta)
+```
+
+```{r}
+nn_test = predict(mdl, test, debug.level = 0)$var1.pred
+RMSE(test$TEMP, nn_test)
+```
+
+### Interpolacja wielomianowa
+
+```{r}
+mdl = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = trening,
+            degree = 3)
+poly = interpolate(r, mdl, xyNames = c("X", "Y"), debug.level = 0)
+poly = subset(poly, 1)
+plot(poly, col = paleta)
+```
+
+```{r}
+poly_test = predict(mdl, test, debug.level = 0)$var1.pred
+RMSE(test$TEMP, poly_test)
+```
+
+### Odwrotne ważenie odległości
+
+```{r}
+mdl = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = trening,
+            set = list(idp = 2))
+idw = interpolate(r, mdl, xyNames = c("X", "Y"), debug.level = 0)
+idw = subset(idw, 1)
+plot(idw, col = paleta)
+```
+
+```{r}
+idw_test = predict(mdl, test, debug.level = 0)$var1.pred
+RMSE(test$TEMP, idw_test)
+```
+
+### Kriging
+
+```{r}
+gst = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = meteo_df)
+v = variogram(gst, width = 0.6)
+plot(v)
+```
+
+```{r warning=FALSE}
+fv = fit.variogram(v, vgm(psill = 4, model = "Sph", range = 2, nugget = 2))
+fv
+plot(v, model = fv)
+```
+
+```{r}
+mdl = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = meteo_df, model = fv)
+kr = interpolate(r, mdl, xyNames = c("X", "Y"), debug.level = 0)
+names(kr) = c("Predykcja", "Wariancja")
+```
+
+```{r}
+par(mfrow = c(1, 2))
+plot(kr[[1]], col = paleta, main = "Predykcja")
+plot(kr[[2]], col = gray.colors(n = 10, rev = TRUE), main = "Wariancja")
+```
+
+```{r}
+kr_test = predict(mdl, test, debug.level = 0)$var1.pred
+RMSE(test$TEMP, kr_test)
+```
+
+# Zadanie
+
+**8.** Porównaj wymienione metody dla dobowej sumy opadów (`meteo_df$OPAD`).
+Dodatkowo wykorzystaj metodę "cieńkiej płytki" (*thin plate spline*) z pakietu
+**fields** (funkcja `Tps()`).
