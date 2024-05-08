@@ -54,7 +54,7 @@ meteo_df = read.csv("../dane/dane_meteo.csv")
 str(meteo_df)
 ```
 
-Do obliczenia podstawowych statysyk opsiowych temperatury możemy wykorzystać
+Do obliczenia podstawowych statystyk opisowych temperatury możemy wykorzystać
 funkcję `summary()`.
 
 ```{r}
@@ -69,7 +69,7 @@ hist(meteo_df$TEMP, main = NULL, breaks = 10, xlab = "Temperatura [°C]",
 ```
 
 W kolejnym kroku dokonajmy konwersji ramki danych do obiektu przestrzennego,
-tj. *SpatVector*. W tym celu należy użyć funkcji `vect()` określająć nazwy
+tj. *SpatVector*. W tym celu należy użyć funkcji `vect()` określając nazwy
 kolumn z długością i szerokością geograficzną (argument `geom`) oraz układ
 współrzędnych (argument `crs`).
 
@@ -117,7 +117,7 @@ niewidzianych danych, co ma kluczowe znaczenie dla określenia jego poprawności
 i przydatności. Wyróżnić można kilka metod walidacji, jednak dwie najważniejsze
 to:
 
-* walidacja podzbiorem (*train / test split*) -- zbiór danych wejściowych
+* walidacja podzbiorem (*hold-out validation*) -- zbiór danych wejściowych
 dzielony jest na dwa podzbiory: zbiór treningowy (używany do trenowania modelu)
 oraz zbiór testowy (używany do oceny skuteczności wytrenowanego modelu)
 * walidacja krzyżowa (*k-fold cross-validation*) -- zbiór danych wejściowych
@@ -130,7 +130,7 @@ Umożliwia to bardziej wiarygodne oszacowanie skuteczności modelu.
 Na potrzeby niniejszej analizy wykorzystamy pierwszą prostszą metodę, tj.
 walidację podzbiorem. Ogólnie przyjmuje się, że dane testowe powinny stanowić
 około 30% wejściowego zbioru danych, natomiast dane treningowe około 70%.
-Podziału na podzbiory można dokonać używająć funkcji `sample()` w celu wylosowania
+Podziału na podzbiory można dokonać używając funkcji `sample()` w celu wylosowania
 indeksów obserwacji, które trafią do podzbioru treningowego. Pozostałe obserwacje
 można przypisać do podzbioru testowego.
 
@@ -226,19 +226,19 @@ RMSE(test$TEMP, idw_test)
 ### Kriging
 
 ```{r}
-gst = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = meteo_df)
-v = variogram(gst, width = 0.6)
+gst = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = trening)
+v = variogram(gst, width = 0.4)
 plot(v)
 ```
 
 ```{r warning=FALSE}
-fv = fit.variogram(v, vgm(psill = 4, model = "Sph", range = 2, nugget = 2))
+fv = fit.variogram(v, vgm(psill = 3, model = "Sph", range = 2, nugget = 1))
 fv
 plot(v, model = fv)
 ```
 
 ```{r}
-mdl = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = meteo_df, model = fv)
+mdl = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = trening, model = fv)
 kr = interpolate(r, mdl, xyNames = c("X", "Y"), debug.level = 0)
 names(kr) = c("Predykcja", "Wariancja")
 ```
@@ -257,5 +257,5 @@ RMSE(test$TEMP, kr_test)
 # Zadanie
 
 **8.** Porównaj wymienione metody dla dobowej sumy opadów (`meteo_df$OPAD`).
-Dodatkowo wykorzystaj metodę "cieńkiej płytki" (*thin plate spline*) z pakietu
+Dodatkowo wykorzystaj metodę "cienkiej płytki" (*thin plate spline*) z pakietu
 **fields** (funkcja `Tps()`).
