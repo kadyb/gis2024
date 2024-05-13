@@ -82,7 +82,7 @@ nDSM
 # nadpisz wartości poniżej 0
 nDSM[nDSM < 0] = 0
 nDSM
-plot(nDSM)
+plot(nDSM, main = "Wysokość obiektów [m]")
 
 # Obliczenie zakresu, średniej i odchylenia standardowego dla rastrów
 statystyki = data.frame(
