@@ -318,8 +318,8 @@ plot(nDSM, main = "Wysokość drzew [m]",
 uwzględnisz:
 
 * wizualizacje NMT i NMPT
-* statystyki opisowe wysokości terenu uwzględniając wartość minimalną,
-maksymalną, średnią oraz odchylenie standardowe
+* statystyki opisowe wysokości terenu (wartość minimalna, maksymalna, średnia
+oraz odchylenie standardowe)
 * profil wysokościowy
 * wizualizacje wysokości obiektów (znormalizowany NMPT)
 
