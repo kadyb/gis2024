@@ -1528,8 +1528,8 @@ dostępu do danych w pełnej rozdzielczości (<a href="https://www.cogeo.org/" c
 <strong>S</strong>ystems – umożliwia jednolity dostęp do różnych typów
 przechowywania danych (<a href="https://gdal.org/user/virtual_file_systems.html" class="uri">https://gdal.org/user/virtual_file_systems.html</a>). Jednym
 z modułów jest <code>vsicurl</code>, który zapewnia bezpośredni dostęp
-do zdalnych plików przez HTTP, HTTPS lub FTP bez konieczności pełnego
-pobierania, tym samym minimalizując transfer danych.</li>
+do zdalnych plików przez protokoły HTTP(S) i FTP bez konieczności
+pełnego pobierania, tym samym minimalizując transfer danych.</li>
 </ul></li>
 </ul>
 </div>
@@ -1552,8 +1552,8 @@ dane |&gt;
   abs() |&gt;
   sort() -&gt; dane
 dane</code></pre>
-<pre><code>##  [1] 0.07163078 0.14109194 0.48710094 0.51100155 0.56193781 0.66482545
-##  [7] 0.76379960 1.13586811 1.58958408 1.69921370</code></pre>
+<pre><code>##  [1] 0.07151519 0.25655716 0.43524907 0.51924971 0.53658718 1.07220030
+##  [7] 1.26799473 1.32582456 1.32738664 1.82453090</code></pre>
 </div>
 </div>
 <div id="pozyskiwanie-danych" class="section level1">
@@ -1611,7 +1611,7 @@ list. Można samodzielnie sprawdzić jego strukturę używając funkcji
 faktu, iż obiekt jest złożoną listą, to jego eksploracja jest bardziej
 skomplikowana w porównaniu do obiektów jednowymiarowych (np. łańcuchów
 znaków). Jeżeli chcemy sprawdzić pozostałe dostępne zbiory danych, to
-należy wykorzystać funkcje</p>
+należy wykorzystać funkcje ……….</p>
 <pre class="r"><code>kolekcje_nazwy = unlist(lapply(kolekcje$collections, \(x) x$id))
 kolekcje_nazwy</code></pre>
 <pre><code>## [1] &quot;sentinel-2-pre-c1-l2a&quot; &quot;cop-dem-glo-30&quot;        &quot;naip&quot;                 
@@ -1621,44 +1621,35 @@ kolekcje_nazwy</code></pre>
 # sentinel-2-l2a jest stara</code></pre>
 <pre class="r"><code>stac_source |&gt;
   stac_search(
-    collections = &quot;landsat-c2-l2&quot;,
-    bbox = c(22.5, 51.1, 22.6, 51.2),
-    datetime = &quot;2023-01-01T00:00:00Z/2023-12-31T00:00:00Z&quot;,
+    collections = &quot;sentinel-2-c1-l2a&quot;,
+    bbox = c(22.5, 51.1, 22.6, 51.2), # xmin, ymin, xmax, ymax (WGS84)
+    datetime = &quot;2023-01-01T00:00:00Z/2023-12-31T00:00:00Z&quot;, # RFC 3339
     limit = 5) |&gt;
   post_request() -&gt; obrazy
 obrazy</code></pre>
 <pre><code>## ###Items
-## - matched feature(s): 174
-## - features (5 item(s) / 169 not fetched):
-##   - LC08_L2SP_186025_20231227_02_T1
-##   - LC09_L2SP_186025_20231219_02_T1
-##   - LC08_L2SP_186025_20231211_02_T2
-##   - LC08_L2SP_186024_20231211_02_T2
-##   - LC09_L2SP_187024_20231210_02_T2
+## - matched feature(s): 288
+## - features (5 item(s) / 283 not fetched):
+##   - S2A_T34UEB_20231230T094411_L2A
+##   - S2A_T34UFB_20231230T094411_L2A
+##   - S2A_T34UEB_20231227T093411_L2A
+##   - S2A_T34UFB_20231227T093411_L2A
+##   - S2B_T34UEB_20231225T094326_L2A
 ## - assets: 
-## ang, atran, blue, cdist, coastal, drad, emis, emsd, green, lwir11, mtl.json, mtl.txt, mtl.xml, nir08, qa, qa_aerosol, qa_pixel, qa_radsat, red, reduced_resolution_browse, swir16, swir22, thumbnail, trad, urad
+## aot, blue, cloud, coastal, granule_metadata, green, nir, nir08, nir09, preview, product_metadata, red, rededge1, rededge2, rededge3, scl, snow, swir16, swir22, thumbnail, tileinfo_metadata, visual, wvp
 ## - item&#39;s fields: 
 ## assets, bbox, collection, geometry, id, links, properties, stac_extensions, stac_version, type</code></pre>
-<pre class="r"><code>names(obrazy$features[[1]]$properties)</code></pre>
-<pre><code>##  [1] &quot;platform&quot;                    &quot;instruments&quot;                
-##  [3] &quot;created&quot;                     &quot;gsd&quot;                        
-##  [5] &quot;description&quot;                 &quot;eo:cloud_cover&quot;             
-##  [7] &quot;view:off_nadir&quot;              &quot;view:sun_elevation&quot;         
-##  [9] &quot;view:sun_azimuth&quot;            &quot;proj:epsg&quot;                  
-## [11] &quot;proj:shape&quot;                  &quot;proj:transform&quot;             
-## [13] &quot;proj:centroid&quot;               &quot;landsat:cloud_cover_land&quot;   
-## [15] &quot;landsat:wrs_type&quot;            &quot;landsat:wrs_path&quot;           
-## [17] &quot;landsat:wrs_row&quot;             &quot;landsat:collection_category&quot;
-## [19] &quot;landsat:collection_number&quot;   &quot;landsat:correction&quot;         
-## [21] &quot;landsat:scene_id&quot;            &quot;landsat:product_generated&quot;  
-## [23] &quot;grid:code&quot;                   &quot;sci:doi&quot;                    
-## [25] &quot;datetime&quot;                    &quot;earthsearch:payload_id&quot;     
-## [27] &quot;processing:software&quot;         &quot;updated&quot;</code></pre>
+<pre class="r"><code>names(obrazy$features[[1]]$properties)[1:15]</code></pre>
+<pre><code>##  [1] &quot;created&quot;              &quot;platform&quot;             &quot;constellation&quot;       
+##  [4] &quot;instruments&quot;          &quot;eo:cloud_cover&quot;       &quot;proj:epsg&quot;           
+##  [7] &quot;proj:centroid&quot;        &quot;mgrs:utm_zone&quot;        &quot;mgrs:latitude_band&quot;  
+## [10] &quot;mgrs:grid_square&quot;     &quot;grid:code&quot;            &quot;view:azimuth&quot;        
+## [13] &quot;view:incidence_angle&quot; &quot;view:sun_azimuth&quot;     &quot;view:sun_elevation&quot;</code></pre>
 <pre class="r"><code>unlist(lapply(obrazy$features, \(x) x$properties$&quot;eo:cloud_cover&quot;))</code></pre>
-<pre><code>## [1] 69.78 73.24 91.35 99.94 99.94</code></pre>
+<pre><code>## [1] 71.93396 68.93441 83.81743 94.01084 99.99993</code></pre>
 <pre class="r"><code>stac_source |&gt;
   stac_search(
-    collections = &quot;landsat-c2-l2&quot;,
+    collections = &quot;sentinel-2-c1-l2a&quot;,
     bbox = c(22.5, 51.1, 22.6, 51.2),
     datetime = &quot;2023-01-01T00:00:00Z/2023-12-31T00:00:00Z&quot;,
     limit = 5) |&gt;
@@ -1666,20 +1657,40 @@ obrazy</code></pre>
   post_request() -&gt; obrazy
 
 unlist(lapply(obrazy$features, \(x) x$properties$&quot;eo:cloud_cover&quot;))</code></pre>
-<pre><code>## [1] 5.73 8.00 0.02 6.20 0.31</code></pre>
-<pre class="r"><code># assets_download()</code></pre>
+<pre><code>## [1] 0.067071 0.043523 1.478151 0.678711 0.000757</code></pre>
+<pre class="r"><code>## w tym przypadku sciezka do pliku jest skomplikowana
+# obrazy |&gt;
+#   items_select(1) |&gt;
+#   assets_download(asset_names = NULL)</code></pre>
+<pre class="r"><code># obrazy |&gt;
+#   items_select(1) |&gt;
+#   assets_select(asset_names = c(&quot;blue&quot;, &quot;green&quot;, &quot;red&quot;)) |&gt;
+#   assets_url(append_gdalvsi = TRUE) -&gt; urls</code></pre>
+<pre class="r"><code># r = rast(urls)
+# r</code></pre>
+<pre class="r"><code># i = items_as_sf(obrazy)</code></pre>
 <p>TODO:</p>
 <ul>
-<li>pobieranie danych <code>assets_download()</code></li>
 <li>pobieranie danych z <code>download.file()</code></li>
-<li>konwersja items do sf</li>
-<li>VSI</li>
 <li>pobieranie miniaturki</li>
+<li>dodać tutoriale</li>
 </ul>
 </div>
 <div id="zadanie" class="section level1">
 <h1>Zadanie</h1>
-<p><strong>9.</strong></p>
+<p><strong>9.</strong> Pobierz dowolną scenę satelitarną z Landsata 8/9
+lub Sentinela 2 o niskim zachmurzeniu (maksymalnie 20%) i następnie:</p>
+<ul>
+<li>sprawdź metadane rastrów</li>
+<li>przygotuj wizualizację RGB</li>
+<li>pobierz losową próbę 10 tys. punktów dla kanału niebieskiego,
+zielonego, czeronwego oraz bliskiej podczerwieni i zaprezentuj
+statystyki opisowe oraz porównaj histogramy</li>
+<li>dodatkowo dla kanału czerownego oraz bliskiej podczerwieni wykonaj
+wykres rozrzutu oraz oblicz współczynik korelacji Pearsona</li>
+<li>oblicz znormalizowany różnicowy wskaźnik wegetacji (<a href="https://gisgeography.com/ndvi-normalized-difference-vegetation-index/">NDVI</a>)
+i przygotuj wizualizację</li>
+</ul>
 </div>
 
 

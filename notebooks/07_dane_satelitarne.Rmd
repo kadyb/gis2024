@@ -48,8 +48,8 @@ wymaganych zakresów danych bez przesyłania niepotrzebnych części.
   * **V**irtual **F**ile **S**ystems -- umożliwia jednolity dostęp do różnych
   typów przechowywania danych (https://gdal.org/user/virtual_file_systems.html).
   Jednym z modułów jest `vsicurl`, który zapewnia bezpośredni dostęp do zdalnych
-  plików przez HTTP, HTTPS lub FTP bez konieczności pełnego pobierania, tym samym
-  minimalizując transfer danych.
+  plików przez protokoły HTTP(S) i FTP bez konieczności pełnego pobierania,
+  tym samym minimalizując transfer danych.
 
 ## Przetwarzanie potokowe
 
@@ -121,7 +121,7 @@ samodzielnie sprawdzić jego strukturę używając funkcji `View()`.
 Domyślnie, wyświetlanych jest tylko 10 pierwszych zbiorów danych. Z faktu, iż
 obiekt jest złożoną listą, to jego eksploracja jest bardziej skomplikowana w 
 porównaniu do obiektów jednowymiarowych (np. łańcuchów znaków). Jeżeli chcemy
-sprawdzić pozostałe dostępne zbiory danych, to należy wykorzystać funkcje 
+sprawdzić pozostałe dostępne zbiory danych, to należy wykorzystać funkcje ..........
 
 ```{r}
 kolekcje_nazwy = unlist(lapply(kolekcje$collections, \(x) x$id))
@@ -133,16 +133,16 @@ kolekcje_nazwy
 ```{r}
 stac_source |>
   stac_search(
-    collections = "landsat-c2-l2",
-    bbox = c(22.5, 51.1, 22.6, 51.2),
-    datetime = "2023-01-01T00:00:00Z/2023-12-31T00:00:00Z",
+    collections = "sentinel-2-c1-l2a",
+    bbox = c(22.5, 51.1, 22.6, 51.2), # xmin, ymin, xmax, ymax (WGS84)
+    datetime = "2023-01-01T00:00:00Z/2023-12-31T00:00:00Z", # RFC 3339
     limit = 5) |>
   post_request() -> obrazy
 obrazy
 ```
 
 ```{r}
-names(obrazy$features[[1]]$properties)
+names(obrazy$features[[1]]$properties)[1:15]
 ```
 
 ```{r}
@@ -152,7 +152,7 @@ unlist(lapply(obrazy$features, \(x) x$properties$"eo:cloud_cover"))
 ```{r}
 stac_source |>
   stac_search(
-    collections = "landsat-c2-l2",
+    collections = "sentinel-2-c1-l2a",
     bbox = c(22.5, 51.1, 22.6, 51.2),
     datetime = "2023-01-01T00:00:00Z/2023-12-31T00:00:00Z",
     limit = 5) |>
@@ -163,17 +163,48 @@ unlist(lapply(obrazy$features, \(x) x$properties$"eo:cloud_cover"))
 ```
 
 ```{r}
-# assets_download()
+## w tym przypadku sciezka do pliku jest skomplikowana
+# obrazy |>
+#   items_select(1) |>
+#   assets_download(asset_names = NULL)
 ```
+
+```{r}
+# obrazy |>
+#   items_select(1) |>
+#   assets_select(asset_names = c("blue", "green", "red")) |>
+#   assets_url(append_gdalvsi = TRUE) -> urls
+```
+
+```{r}
+# r = rast(urls)
+# r
+```
+
+```{r}
+# i = items_as_sf(obrazy)
+```
+
 
 TODO:
 
-- pobieranie danych `assets_download()`
 - pobieranie danych z `download.file()`
-- konwersja items do sf
-- VSI
 - pobieranie miniaturki
+- dodać tutoriale
 
 # Zadanie
 
-**9.**
+**9.** Pobierz dowolną scenę satelitarną z Landsata 8/9 lub Sentinela 2 o
+niskim zachmurzeniu (maksymalnie 20%) i następnie:
+
+- sprawdź metadane rastrów
+- przygotuj wizualizację RGB
+- pobierz losową próbę 10 tys. punktów dla kanału niebieskiego, zielonego,
+czeronwego oraz bliskiej podczerwieni i zaprezentuj statystyki opisowe
+oraz porównaj histogramy
+- dodatkowo dla kanału czerownego oraz bliskiej podczerwieni wykonaj
+wykres rozrzutu oraz oblicz współczynik korelacji Pearsona
+- oblicz znormalizowany różnicowy wskaźnik wegetacji
+([NDVI](https://gisgeography.com/ndvi-normalized-difference-vegetation-index/))
+i przygotuj wizualizację
+
