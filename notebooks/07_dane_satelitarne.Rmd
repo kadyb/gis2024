@@ -1,0 +1,179 @@
+---
+title: "Dane satelitarne"
+author: "Krzysztof Dyba"
+output:
+  html_document:
+    toc: yes
+    toc_float: true
+---
+
+```{r message=FALSE}
+library("terra")
+```
+
+# Wprowadzenie
+
+## Dane satelitarne
+
+Dane satelitarne odgrywają kluczową rolę w systemach informacji geograficznej
+i wykorzystywane są w szerokim zakresie do kartowania, analizy pokrycia terenu,
+monitorowania zmian w środowisku, zarządzania kryzysowego czy
+rolnictwa precyzyjnego. Źródłem danych mogą być:
+
+* sensory optyczne (pozyskują dane w różnych spektrach fali elektromagnetycznej,
+np. światło widzialne, bliska podczerwień, podczerwień krótkofalowa czy
+podczerwień termalna)
+* sensory radarowe (emitują impulsy radarowe, a następnie mierzą odbitą energię.
+W przeciwieństwie do sensorów optycznych być wykorzystywane do obrazowania
+powierzchni przez chmury oraz w nocy)
+
+W kontekście ogromnych zbiorów danych satelitarnych nie sposób pominąć
+zasadniczych technologii ułatwiających ich przetwarzanie:
+
+* **S**patio**T**emporal **A**sset **C**atalogs -- ustandaryzowany sposób
+organizowania i opisywania zbiorów danych przestrzennych ułatwiający ich
+wyszukiwanie oraz dostęp (https://stacspec.org).
+* *Byte serving* (*range requests*) -- technika używana w protokole HTTP do
+przesyłania tylko określonej części pliku z serwera do klienta. Jest to
+szczególnie przydatne w przypadku dużych plików, gdzie pobieranie całego pliku
+może być nieefektywne lub niepotrzebne. Ta technika umożliwia wydajny dostęp do
+wymaganych zakresów danych bez przesyłania niepotrzebnych części.
+  * **C**loud **O**ptimized **G**eotiff -- specjalny format przechowywania
+  danych geoprzestrzennych (takich jak zdjęcia satelitarne) zaprojektowany z
+  myślą o środowiskach chmurowych. Opiera się na standardowym formacie Geotiff,
+  ale jest optymalizowany pod kątem wydajnego dostępu i przetwarzania w chmurze.
+  Oprócz *byte serving*, stosowane są podglądy (*overviews*), czyli warstwy rastra
+  w niższej rozdzielczości, umożliwiając renderowanie rastra bez konieczności
+  dostępu do danych w pełnej rozdzielczości (https://www.cogeo.org/).
+  * **V**irtual **F**ile **S**ystems -- umożliwia jednolity dostęp do różnych
+  typów przechowywania danych (https://gdal.org/user/virtual_file_systems.html).
+  Jednym z modułów jest `vsicurl`, który zapewnia bezpośredni dostęp do zdalnych
+  plików przez HTTP, HTTPS lub FTP bez konieczności pełnego pobierania, tym samym
+  minimalizując transfer danych.
+
+## Przetwarzanie potokowe
+
+Przetwarzanie potokowe w kontekście analizy danych odnosi się organizacji
+przepływu pracy w sposób liniowy (sekwencyjny). Oznacza to, że dane przepływają
+przez serię etapów (funkcji), w których wynik jednego etapu służy jako wejście
+do kolejnego. W praktyce sprawia to, że kod jest bardziej przejrzysty i
+łatwiejszy do zrozumienia.
+
+W R wbudowanym operatorem przypływu jest `|>`. Do jego zapisu można wykorzystać
+skrót klawiszowy `CTRL + SHIFT + M`, jednak wymaga to zaznaczenia opcji
+`Use native pipe operator` (zakłada `Code > Editing`) w RStudio.
+
+Przykładowo, możemy wylosować 10 liczb z rozkładu normalnego, następnie obliczyć
+wartość bezwzględną, posortować w kolejności rosnącej i finalnie nadpisać obiekt
+`dane`.
+
+```{r}
+dane = rnorm(10)
+dane |> 
+  abs() |>
+  sort() -> dane
+dane
+```
+
+# Pozyskiwanie danych
+
+Do obsługi katalogów STAC w R służy pakiet **rstac**, który umożliwia wyszukiwanie
+i pobieranie danych zgodnie z tym standardem.
+
+```{r}
+library("rstac")
+```
+
+W pierwszym kroku należy zdefiniować źródło danych używając funkcji `stac()`.
+Wykaz źródeł można znaleźć na [STAC Index](https://stacindex.org/). W naszym
+przykładzie wykorzystamy usługę [Earth Search](https://element84.com/earth-search/),
+która dostarcza m. in. zdjęcia satelitarne z Landsata oraz Sentinela.
+
+```{r}
+# stac_source = stac("https://planetarycomputer.microsoft.com/api/stac/v1")
+stac_source = stac("https://earth-search.aws.element84.com/v1")
+stac_source
+```
+
+W wyniku tej operacji otrzymaliśmy obiekt `rstac_query`, który zawiera
+informacje o zapytaniu HTTP, które zostanie wysłane do serwera. Możemy wyróżnić
+dwie metody wysyłania żądań:
+
+* GET (`get_request()`) -- służy głównie do pobierania danych z serwera. Dane
+przesyłane są poprzez adres URL jako parametry zapytania.
+* POST (`post_request()`) -- służy głównie do przesyłania danych na serwer. Dane 
+są wysyłane w treści (*body*) żądania HTTP.
+
+Wybór metody zależy od serwera.
+
+Spróbujmy teraz odpytać serwer jakie zbiory danych znajdują się na nim.
+
+```{r}
+kolekcje <- stac_source |>
+  collections() |>
+  get_request()
+kolekcje
+```
+
+W odpowiedzi otrzymaliśmy obiekt, który jest wielopoziomową listą list. Można
+samodzielnie sprawdzić jego strukturę używając funkcji `View()`.
+
+Domyślnie, wyświetlanych jest tylko 10 pierwszych zbiorów danych. Z faktu, iż
+obiekt jest złożoną listą, to jego eksploracja jest bardziej skomplikowana w 
+porównaniu do obiektów jednowymiarowych (np. łańcuchów znaków). Jeżeli chcemy
+sprawdzić pozostałe dostępne zbiory danych, to należy wykorzystać funkcje 
+
+```{r}
+kolekcje_nazwy = unlist(lapply(kolekcje$collections, \(x) x$id))
+kolekcje_nazwy
+# landsat-c2-l2, sentinel-2-c1-l2a
+# sentinel-2-l2a jest stara
+```
+
+```{r}
+stac_source |>
+  stac_search(
+    collections = "landsat-c2-l2",
+    bbox = c(22.5, 51.1, 22.6, 51.2),
+    datetime = "2023-01-01T00:00:00Z/2023-12-31T00:00:00Z",
+    limit = 5) |>
+  post_request() -> obrazy
+obrazy
+```
+
+```{r}
+names(obrazy$features[[1]]$properties)
+```
+
+```{r}
+unlist(lapply(obrazy$features, \(x) x$properties$"eo:cloud_cover"))
+```
+
+```{r}
+stac_source |>
+  stac_search(
+    collections = "landsat-c2-l2",
+    bbox = c(22.5, 51.1, 22.6, 51.2),
+    datetime = "2023-01-01T00:00:00Z/2023-12-31T00:00:00Z",
+    limit = 5) |>
+  ext_query(`eo:cloud_cover` < 10) |>
+  post_request() -> obrazy
+
+unlist(lapply(obrazy$features, \(x) x$properties$"eo:cloud_cover"))
+```
+
+```{r}
+# assets_download()
+```
+
+TODO:
+
+- pobieranie danych `assets_download()`
+- pobieranie danych z `download.file()`
+- konwersja items do sf
+- VSI
+- pobieranie miniaturki
+
+# Zadanie
+
+**9.**
