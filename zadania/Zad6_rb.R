@@ -10,8 +10,7 @@ dane = ortho_request(lublin)
 View(dane)
 
 # Przefiltrowanie danych
-dane[dane$year == 2015, ]
-dane[dane$composition == 'RGB', ]
+dane[dane$year == 2015 & dane$composition == 'RGB', ]
 
 # Wybranie rastrów
 id = c("69776_196303_M-34-34-A-a-3-2", "69776_196307_M-34-34-A-a-3-4")
@@ -29,8 +28,8 @@ pliki
 r1 = rast(pliki[1])
 r2 = rast(pliki[2])
 
-# Złączenie rastrów
-mosaic = merge(r1, r2)
+# Złączenie rastrów i zapisanie połączonych rastrów jako TIFF
+mosaic = merge(r1, r2, filename="mosaic.tiff")
 
 # Zapisanie połączonych rastrów jako TIFF
 writeRaster(mosaic, "mosaic.tiff")
@@ -47,7 +46,6 @@ file.size("mosaic.vrt")
 readLines(vrt_output) # Plik w postaci XML zawierający dane dotyczące rastrów
 
 # Zmniejszenie rozdzielczości tiff do 10m i zapisanie do oddzielnego pliku
-mosaic_zmniejszona = aggregate(mosaic, fact=2)
-writeRaster(mosaic_zmniejszona, "mosaic_10m.tiff") 
+mosaic_zmniejszona = aggregate(mosaic, fact=40, filename="mosaic_10m.tiff") # współczynnik agregacji 10m/0.25m = 40
 
-# Zmniejszenie rozdzielczości do 10m doprowadziło do pogorszenia jakości obrazu. Widać to szczególnie przy skali 1: 2000 i większej porównując rastry np. w programie QGIS.
+# Zmniejszenie rozdzielczości do 10m doprowadziło do znacznego pogorszenia jakości obrazu.
