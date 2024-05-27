@@ -3,7 +3,7 @@ library("terra")
 library("rgugik")
 
 # Wczytanie danych
-lublin = vect("Lublin.gpkg")
+lublin = vect("../dane/Lublin.gpkg")
 
 # Pobranie i wyświetlenie danych
 dane = ortho_request(lublin)
@@ -30,9 +30,6 @@ r2 = rast(pliki[2])
 
 # Złączenie rastrów i zapisanie połączonych rastrów jako TIFF
 mosaic = merge(r1, r2, filename="mosaic.tiff")
-
-# Zapisanie połączonych rastrów jako TIFF
-writeRaster(mosaic, "mosaic.tiff")
 
 # Utworzenie pliku vrt
 vrt_output = "mosaic.vrt"
