@@ -51,12 +51,9 @@ Materiały dostępne są w postaci interaktywnych notebooków (R Markdown).
 * [Ortofotomapa](https://kadyb.github.io/gis2024/notebooks/04_ortofotomapa.html)
 * [Cyfrowe modele wysokościowe](https://kadyb.github.io/gis2024/notebooks/05_cmw.html)
 * [Interpolacja przestrzenna](https://kadyb.github.io/gis2024/notebooks/06_interpolacja.html)
-* [Dane satelitarne](https://kadyb.github.io/gis2024/notebooks/07_dane_satelitarne.html)
+* [Dostęp do danych satelitarnych](https://kadyb.github.io/gis2024/notebooks/07_dane_satelitarne.html)
 * Klasyfikacja nienadzorowana
 * Klasyfikacja nadzorowana
-* Obliczenia równoległe
-* Optymalizacja kodu
-* Geointerfejsy
 
 # Zaliczenie
 
