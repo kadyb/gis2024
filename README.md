@@ -52,7 +52,7 @@ Materiały dostępne są w postaci interaktywnych notebooków (R Markdown).
 * [Cyfrowe modele wysokościowe](https://kadyb.github.io/gis2024/notebooks/05_cmw.html)
 * [Interpolacja przestrzenna](https://kadyb.github.io/gis2024/notebooks/06_interpolacja.html)
 * [Dostęp do danych satelitarnych](https://kadyb.github.io/gis2024/notebooks/07_dane_satelitarne.html)
-* Klasyfikacja nienadzorowana
+* [Klasyfikacja nienadzorowana](https://kadyb.github.io/gis2024/notebooks/08_klasteryzacja.html)
 * Klasyfikacja nadzorowana
 
 # Zaliczenie
