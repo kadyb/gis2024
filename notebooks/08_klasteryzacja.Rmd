@@ -1,0 +1,241 @@
+---
+title: "Klasyfikacja nienadzorowana"
+author: "Krzysztof Dyba"
+output:
+  html_document:
+    toc: yes
+    toc_float: true
+---
+
+```{r message=FALSE}
+library("terra")
+library("rstac")
+options(timeout = 600)
+```
+
+# Pozyskanie danych
+
+```{r}
+stac_source = stac("https://earth-search.aws.element84.com/v1")
+stac_source |>
+  stac_search(
+    collections = "sentinel-2-c1-l2a",
+    bbox = c(22.5, 51.1, 22.6, 51.2),
+    datetime = "2023-03-01T00:00:00Z/2023-10-31T00:00:00Z") |>
+  ext_query(`eo:cloud_cover` < 10) |>
+  post_request() -> obrazy
+```
+
+```{r}
+kanaly = c("blue", "green", "red", "nir")
+
+obrazy |>
+  items_filter(properties$`s2:tile_id` == "S2A_OPER_MSI_L2A_TL_2APS_20230921T151458_A043076_T34UEB_N05.09") |>
+  assets_select(asset_names = kanaly) |>
+  assets_url() -> sentinel
+sentinel
+```
+
+Zauważ, że kanał 8 (bliska podczerwień) jest przed kanałem 4 (czerwony).
+Należy mieć na uwadze, że nieodpowiednia kolejność może spowodować problemy
+w dalszej części analizy.
+
+```{r eval=FALSE}
+dir.create("sentinel")
+rastry = file.path("sentinel", basename(sentinel))
+```
+
+```{r eval=FALSE}
+for (i in seq_along(sentinel)) {
+  download.file(sentinel[i], rastry[i], mode = "wb")
+}
+```
+
+# Przygotowanie danych
+
+Po pobraniu danych musimy stworzyć listę plików (rastrów), które zamierzamy
+wczytać. W tym celu możemy wykorzystać funkcję `list.files()`, która jako
+argument przyjmuje ścieżkę do folderu z plikami. Oprócz tego musimy wskazać
+jaki rodzaj plików chcemy wczytać `(pattern = "\\.tif$")` oraz zwrócić pełne
+ścieżki do plików `(full.names = TRUE)`.
+
+```{r}
+rastry = list.files("sentinel", pattern = "\\.tif$", full.names = TRUE)
+rastry
+```
+
+Kiedy utworzyliśmy już listę plików, możemy je wczytać za pomocą funkcji
+`rast()`. Pobrane zobrazowania pokrywają dużo obszar (około 12 000 km$^2$).
+Dla uproszczenia analizy zdefiniujmy mniejszy zakres przestrzenny do wczytania
+używając funkcji `ext()` oraz przekazując obiekt SpatExtent jako argument `win`
+w funkcji `rast()`.
+
+Zauważ, że do zdefiniowania zakresu przestrzennego podczas wyszukiwania danych
+użyliśmy układu WGS 84, natomiast teraz wymagany jest rzeczywisty układ rastra,
+tj. `EPSG:32634`. Można to sprawdzić w metadanych katalogu STAC (obiekt `obrazy`)
+lub używając funkcji `describe()` (wymaga ścieżki do pliku).
+
+```{r}
+bbox = ext(505000, 555000, 5629000, 5658000)
+r = rast(rastry, win = bbox)
+r
+```
+
+Możemy również zmienić nazwy kanałów spektralnych. Przed tą operacją należy się
+upewnić czy kanały zostały wczytane w prawidłowej kolejności.
+
+```{r}
+names(r) = kanaly
+```
+
+W następnym kroku możemy w prosty sposób sprawdzić statystyki opisowe naszego
+zbioru danych.
+
+Trzeba przemnożyć przez 0.0001 i odjąc -0.1 (działa to domyślnie na podstawie
+metadanych).
+
+```{r}
+scoff(r)
+summary(r)
+```
+
+```{r}
+r[r < 0] = NA
+r[r > 1] = NA
+```
+
+```{r eval=FALSE}
+r[r < 0] = 0
+r[r > 1] = 1
+```
+
+```{r}
+plotRGB(r, r = 3, g = 2, b = 1, stretch = "lin")
+```
+
+# Klasteryzacja
+
+```{r}
+library("cluster")
+```
+
+```{r}
+mat = values(r)
+nrow(mat) # wyświetla liczbę wierszy
+```
+
+```{r eval=FALSE}
+View(mat)
+```
+
+```{r}
+mat_omit = na.omit(mat)
+nrow(mat_omit)
+```
+
+```{r}
+set.seed(123) # ziarno losowości
+mdl = kmeans(mat_omit, centers = 4)
+```
+
+```{r}
+mdl$centers
+```
+
+```{r}
+head(mdl$cluster)
+```
+
+# Walidacja
+
+```{r}
+set.seed(123)
+idx = sample(1:nrow(mat_omit), size = 10000)
+head(idx)
+```
+```{r}
+sil = silhouette(mdl$cluster[idx], dist(mat_omit[idx, ]))
+summary(sil)
+```
+
+```{r}
+colors = rainbow(4) # wybierz 5 kolorów z wbudowanej palety `rainbow`
+plot(sil, border = NA, col = colors, main = "Silhouette Index")
+```
+
+# Interpretacja
+
+```{r message=FALSE}
+library("tidyr") # transformacja danych
+library("ggplot2") # wizualizacja danych
+```
+
+```{r}
+stats = cbind(mat_omit[idx, ], cluster = mdl$cluster[idx])
+stats = as.data.frame(stats)
+head(stats)
+```
+
+```{r}
+stats = pivot_longer(stats, cols = 1:4, names_to = "band", values_to = "value")
+```
+
+```{r}
+stats$cluster = as.factor(stats$cluster)
+stats$band = as.factor(stats$band)
+head(stats)
+```
+
+```{r}
+ggplot(stats, aes(x = band, y = value, fill = cluster)) +
+  geom_boxplot()
+```
+
+```{r}
+ggplot(stats, aes(x = band, y = value, fill = cluster)) +
+  geom_boxplot(show.legend = FALSE) +
+  scale_fill_manual(values = colors) +
+  facet_wrap(vars(cluster)) +
+  xlab("Kanał") +
+  ylab("Odbicie") +
+  theme_light()
+```
+
+TODO:
+
+- posortowac kanaly i przetlumaczyc na j. polski
+
+# Finalna mapa
+
+```{r}
+vec = rep(NA, ncell(r)) # przygotuj pusty wektor
+```
+
+```{r}
+# zastąp tylko te wartości, które nie są NA
+vec[complete.cases(mat)] = mdl$cluster 
+```
+
+```{r}
+clustering = rast(r, nlyrs = 1, vals = vec)
+```
+
+```{r}
+plot(clustering, type = "classes", col = colors)
+```
+
+```{r}
+colors = c("#2fbd2f", "#086209", "#9aed2d", "#d9d9d9")
+category = c("gęsta roślinność", "lasy/woda", "trawa", "odkryta gleba")
+plot(clustering, col = colors, type = "classes", levels = category,
+     mar = c(3, 3, 3, 7))
+```
+
+```{r eval=FALSE}
+writeRaster(clustering, "clustering.tif", datatype = "INT1U")
+```
+
+# Dalsze kroki
+
+
+
