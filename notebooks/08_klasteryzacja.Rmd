@@ -54,7 +54,7 @@ Zauważ, że kanał 8 (bliska podczerwień) jest przed kanałem 4 (czerwony).
 Należy mieć na uwadze, że nieodpowiednia kolejność może spowodować problemy
 w dalszej części projektu.
 
-W kolejnym kroku, używając funkcji `dir.create()` stowrzymy nowy katalog na
+W kolejnym kroku, używając funkcji `dir.create()` stworzymy nowy katalog na
 dysku, do którego zostaną pobrane zobrazowania. Oprócz tego, należy zdefiniować
 ścieżki i nazwy plików. W tym celu będą przydatne dwie funkcje -- `file.path()`
 do stworzenia ścieżek do plików oraz `basename()` do wyodrębnienia nazwy
@@ -285,8 +285,8 @@ spróbować zwiększyć liczbę klastrów lub użyć innej metody grupowania). M
 również zaprezentować wyniki na wykresie.
 
 ```{r}
-colors = rainbow(4) # wybierz 4 kolory z wbudowanej palety `rainbow`
-plot(sil, border = NA, col = colors, main = "Silhouette Index")
+kolory = rainbow(4) # wybierz 4 kolory z wbudowanej palety `rainbow`
+plot(sil, border = NA, col = kolory, main = "Silhouette Index")
 ```
 
 # Interpretacja
@@ -357,7 +357,7 @@ etykiety = c("Niebieski", "Zielony", "Czerwony", "Bliska\npodczerwień")
 ggplot(stats, aes(x = kanal, y = wartosc, fill = klaster)) +
   geom_boxplot(show.legend = FALSE) +
   scale_x_discrete(limits = kanaly, labels = etykiety) +
-  scale_fill_manual(values = colors) +
+  scale_fill_manual(values = kolory) +
   facet_wrap(vars(klaster)) +
   xlab("Kanał") +
   ylab("Odbicie") +
@@ -395,7 +395,7 @@ komórek.
 
 ```{r}
 # przygotuj pusty wektor
-vec = rep(NA, ncell(r))
+wek = rep(NA, ncell(r))
 ```
 
 Następnie musimy przypisać nasze grupy w wektorze w odpowiednie miejsca,
@@ -404,24 +404,24 @@ wartości można odwołać się przez funkcję `complete.cases()`.
 
 ```{r}
 # zastąp tylko te wartości, które nie są NA
-vec[complete.cases(mat)] = mdl$cluster 
+wek[complete.cases(mat)] = mdl$cluster 
 ```
 
 W ostatnim kroku należy skopiować metadane obiektu `r`, ale tylko z jedną
-warstwą, i przypisać mu wartości wektora `vec`.
+warstwą, i przypisać mu wartości wektora `wek`.
 
 ```{r}
 # stwórz nowy raster
-clustering = rast(r, nlyrs = 1, vals = vec)
+clustering = rast(r, nlyrs = 1, vals = wek)
 ```
 
 Zaprezentujmy wynik grupowania na mapie, używając odpowiednich kolorów i nazw
 klastrów.
 
 ```{r}
-colors = c("#9aed2d", "#086209", "#2fbd2f", "#d9d9d9")
-category = c("trawa", "lasy/woda", "gęsta roślinność", "odkryta gleba")
-plot(clustering, col = colors, type = "classes", levels = category,
+kolory = c("#9aed2d", "#086209", "#2fbd2f", "#d9d9d9")
+kategorie = c("trawa", "lasy/woda", "gęsta roślinność", "odkryta gleba")
+plot(clustering, col = kolory, type = "classes", levels = kategorie,
      mar = c(3, 3, 3, 7))
 ```
 
@@ -442,7 +442,7 @@ nienadzorowanej do danych satelitarnych i następujące aspekty mogą zostać
 rozszerzone:
 
 - Post-processing wyników -- zastosowana metoda grupowania opiera się na
-podejściu pikselowym, co oznacza, że relacje między sąsiadującymi pikselelami nie
+podejściu pikselowym, co oznacza, że relacje między sąsiadującymi komórkami nie
 są uwzględniane w klasyfikacji. Powoduje to efekt pieprzu i soli. Można to nieco
 poprawić, stosując filtr modalny (`terra::focal()`) lub filtr przesiewowy
 (`terra::sieve()`). Innym podejściem jest użycie zmiennych, które są obliczane
@@ -450,14 +450,14 @@ w ruchomym oknie lub w mniejszych skalach przestrzennych.
 - Zwiększenie skuteczności klasteryzacji -- w naszym grupowaniu lasy i obiekty
 wodne zostały błędnie zaliczone do jednego klastra oraz strefa zabudowana nie
 została w ogóle wyodrębniona. W tym przypadku pojawia się kilka potencjalnych
-rozwiązan, np. wykorzystanie większej liczby klastrów lub innego algorymtu
+rozwiązań, np. wykorzystanie większej liczby klastrów lub innego algorytmu
 grupującego, użycie innych zmiennych (tj. pozostałych kanałów spektralnych,
 obliczenie wybranych wskaźników spektralnych czy wysokości obiektów z modelu
 wysokościowego). Istotna jest także kwestia odpowiedniego doboru tych zmiennych
-oraz redukcji wymiarowośći w przypadku skorelowanych zmiennych.
+oraz redukcji wymiarowości w przypadku skorelowanych zmiennych.
 - Klasyfikacja na większych lub nowych obszarach -- nasza analiza obejmowała
 niewielki obszar, dzięki czemu mogliśmy załadować wszystkie dane do pamięci.
-Zwykle jednak model trenowany jest na reprezentatywenj próbie, a następnie
+Zwykle jednak model trenowany jest na reprezentatywnej próbie, a następnie
 stosowany do całego obszaru. Niestety, funkcja `kmeans()` nie posiada metody
 predykcji, więc musimy napisać ją sami. Nie jest to skomplikowane; wymaga
 jedynie obliczenia odległości pikseli dla każdego klastra i wybrania najbliższego.
@@ -467,5 +467,3 @@ innych obszarach.
 - Porównanie wyników z klasyfikacją nadzorowaną -- istnieje wiele map pokrycia
 terenu (np. CORINE Land Cover, ESA WorldCover, ESRI Land Cover). Warto porównać
 te dwa podejścia.
-
-
