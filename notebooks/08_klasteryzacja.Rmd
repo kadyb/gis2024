@@ -15,6 +15,13 @@ options(timeout = 600)
 
 # Pozyskanie danych
 
+Niniejszą analizę wykonamy na podstawie danych z Sentinela-2. Jako źródło danych
+wykorzystamy katalog STAC i usługę [Earth Search](https://element84.com/earth-search/).
+Przeprowadzimy również proste filtrowanie dostępnych produktów definiując w
+zapytaniu: kolekcję (`collections`), zakres przestrzenny w układzie WGS 84
+(`bbox`), interwał czasowy w standardzie RFC 3339 (`datetime`) oraz atrybut
+zachmurzenia sceny (`eo:cloud_cover`).
+
 ```{r}
 stac_source = stac("https://earth-search.aws.element84.com/v1")
 stac_source |>
@@ -25,6 +32,13 @@ stac_source |>
   ext_query(`eo:cloud_cover` < 10) |>
   post_request() -> obrazy
 ```
+
+Jako wynik zapytania zostały zwrócone metadane scen spełniające zadane warunki.
+Następnie możemy wybrać przykładową scenę z 21 września 2023 r. oraz ograniczyć
+liczbę kanałów do czterech podstawowych w rozdzielczości 10 m, tj. niebieskiego,
+zielonego, czerwonego i bliskiej podczerwieni w celu uproszczenia analizy.
+Finalnie, używając funkcji `assets_url()` zostaną zwrócone odpowiednie odnośniki
+do pobrania rastrów.
 
 ```{r}
 kanaly = c("blue", "green", "red", "nir")
@@ -38,12 +52,20 @@ sentinel
 
 Zauważ, że kanał 8 (bliska podczerwień) jest przed kanałem 4 (czerwony).
 Należy mieć na uwadze, że nieodpowiednia kolejność może spowodować problemy
-w dalszej części analizy.
+w dalszej części projektu.
+
+W kolejnym kroku, używając funkcji `dir.create()` stowrzymy nowy katalog na
+dysku, do którego zostaną pobrane zobrazowania. Oprócz tego, należy zdefiniować
+ścieżki i nazwy plików. W tym celu będą przydatne dwie funkcje -- `file.path()`
+do stworzenia ścieżek do plików oraz `basename()` do wyodrębnienia nazwy
+pliku wraz z rozszerzeniem z URL.
 
 ```{r eval=FALSE}
 dir.create("sentinel")
 rastry = file.path("sentinel", basename(sentinel))
 ```
+
+Teraz możemy pobrać nasze dane używając funkcji `download.file()` w pętli.
 
 ```{r eval=FALSE}
 for (i in seq_along(sentinel)) {
@@ -65,20 +87,19 @@ rastry
 ```
 
 Kiedy utworzyliśmy już listę plików, możemy je wczytać za pomocą funkcji
-`rast()`. Pobrane zobrazowania pokrywają dużo obszar (około 12 000 km$^2$).
+`rast()`. Pobrane zobrazowania pokrywają duży obszar (około 12 000 km$^2$).
 Dla uproszczenia analizy zdefiniujmy mniejszy zakres przestrzenny do wczytania
 używając funkcji `ext()` oraz przekazując obiekt SpatExtent jako argument `win`
 w funkcji `rast()`.
 
-Zauważ, że do zdefiniowania zakresu przestrzennego podczas wyszukiwania danych
-użyliśmy układu WGS 84, natomiast teraz wymagany jest rzeczywisty układ rastra,
-tj. `EPSG:32634`. Można to sprawdzić w metadanych katalogu STAC (obiekt `obrazy`)
-lub używając funkcji `describe()` (wymaga ścieżki do pliku).
+Zwróć uwagę, że do zdefiniowania zakresu przestrzennego podczas wyszukiwania
+danych użyliśmy układu WGS 84, natomiast teraz wymagany jest rzeczywisty układ
+rastra, tj. `EPSG:32634`. Można to sprawdzić w metadanych katalogu STAC (obiekt
+`obrazy`) lub używając funkcji `describe()` (wymaga ścieżki do pliku).
 
 ```{r}
 bbox = ext(505000, 555000, 5629000, 5658000)
 r = rast(rastry, win = bbox)
-r
 ```
 
 Możemy również zmienić nazwy kanałów spektralnych. Przed tą operacją należy się
@@ -86,57 +107,124 @@ upewnić czy kanały zostały wczytane w prawidłowej kolejności.
 
 ```{r}
 names(r) = kanaly
+r
 ```
 
-W następnym kroku możemy w prosty sposób sprawdzić statystyki opisowe naszego
-zbioru danych.
-
-Trzeba przemnożyć przez 0.0001 i odjąc -0.1 (działa to domyślnie na podstawie
-metadanych).
+Na pierwszy rzut oka, metadane odnoszące się do wartości minimalnych i
+maksymalnych sugerują, że odbicie spektralne jest z zakresu od jeden do
+kilkunastu tysięcy. Wyliczmy jednak statystyki z próby używając funkcji
+`summary()`.
 
 ```{r}
-scoff(r)
 summary(r)
 ```
 
+Możemy zauważyć rozbieżność pomiędzy metadanymi a rzeczywistymi statystykami.
+Aby ograniczyć zajmowane miejsce, pobrane rastry zapisane są jako wartości
+całkowite (`UInt16`) z pewnym współczynnikiem skalowania (*scale*) oraz
+przesunięciem (*offset*). Funkcja `rast()` automatycznie wczytuje te parametry
+z metadanych pliku i następnie dokonuje przekształcenia wartości według
+poniższego wzoru:
+
+$$
+x = x \cdot scale - offset
+$$
+
+Parametry te można pozyskać za pomocą funkcji `scoff()` (lub funkcji
+`describe()`). Należy również pamiętać, że każdy produkt/kolekcja ma swoje
+unikalne parametry i konieczne jest zapoznanie się z dokumentacją.
+
 ```{r}
+scoff(r)
+```
+
+Zasadniczo, wartości odbicia spektralnego mieszczą się w przedziale od 0 do 1,
+gdzie 0 oznacza brak odbicia (całe światło zostało pochłonięte), a 1 oznacza
+całkowite odbicie od powierzchni. W praktyce obiekty nie odbijają bądź
+pochłaniają stuprocentowo światła, niemniej sensory oraz procesy kalibracyjne
+nie są idealne, więc mogą pojawić się wartości odstające od tego przedziału,
+tak jak w tej sytuacji.
+
+Można ten problem rozwiązać na dwa sposoby:
+
+1. Zastąpić te wartości brakiem danych (`NA`).
+2. Dociąć do minimalnej i maksymalnej wartości.
+
+Pierwszy sposób może spowodować, że stracimy dużą część zbioru danych.
+Natomiast drugi sposób może powodować przekłamania.
+
+```{r}
+# sposób 1
 r[r < 0] = NA
 r[r > 1] = NA
 ```
 
 ```{r eval=FALSE}
+# sposób 2
 r[r < 0] = 0
 r[r > 1] = 1
 ```
 
+Po przeskalowaniu wartości możemy wyświetlić kompozycję RGB. W tym przypadku
+zamiast funkcji `plot()` należy użyć funkcji `plotRGB()` oraz zdefiniować 
+kolejność kanałów czerwonego, zielonego oraz niebieskiego. Często zdarza się,
+że kompozycje są zbyt ciemne/jasne, wtedy warto zastosować rozciągnięcie kolorów
+używając argumentu `stretch = "lin"` lub `stretch = "hist"`.
+
 ```{r}
+# plotRGB(r, r = 3, g = 2, b = 1)
 plotRGB(r, r = 3, g = 2, b = 1, stretch = "lin")
 ```
 
 # Klasteryzacja
 
 ```{r}
-library("cluster")
+library("cluster") # klasteryzacja danych
 ```
+
+Dane do modelowania muszą zostać przygotowane w odpowiedni sposób. Modele
+klasyfikacyjne najczęściej na etapie trenowania wymagają macierzy lub ramki
+danych (*data frame*). Dane rastrowe można przetworzyć do macierzy przy użyciu
+funkcji `values()`.
 
 ```{r}
 mat = values(r)
 nrow(mat) # wyświetla liczbę wierszy
 ```
 
+Za pomocą interaktywnej funkcji `View()` możemy sprawdzić jak wygląda nasza macierz.
+
 ```{r eval=FALSE}
 View(mat)
 ```
+
+W macierzy występują brakujące wartości. Zazwyczaj modele nie obsługują
+`NA`, więc musimy je usunąć. Służy do tego dedykowana funkcja `na.omit()`.
 
 ```{r}
 mat_omit = na.omit(mat)
 nrow(mat_omit)
 ```
 
+Teraz przejdziemy do kolejnego etapu analizy, jakim jest wytrenowanie modelu.
+Istnieje wiele metod i modeli grupowania (patrz [CRAN Task View](https://cran.r-project.org/web/views/Cluster.html)),
+ale w tym przykładzie użyjemy prostego modelu [grupowania metodą k-średnich](https://www.statsoft.pl/textbook/stcluan.html#k).
+Ten model wymaga jedynie, aby podać z góry liczbę grup/klastrów
+(argument `centers`). Jest to algorytm stochastyczny, więc za każdym razem
+zwraca inne wyniki. Żeby analiza była powtarzalna musimy ustawić ziarno
+losowości -- `set.seed()`.
+
 ```{r}
 set.seed(123) # ziarno losowości
 mdl = kmeans(mat_omit, centers = 4)
 ```
+
+W wyniku powyższej operacji otrzymaliśmy m.in.:
+
+1. Obliczone średnie wartości grup dla poszczególnych kanałów (`mdl$centers`).
+2. Wektor ze sklasyfikowanymi wartościami macierzy (`mdl$cluster`).
+
+Wyświetlmy te obiekty:
 
 ```{r}
 mdl$centers
@@ -146,90 +234,202 @@ mdl$centers
 head(mdl$cluster)
 ```
 
+Oznacza to, że pierwszy wiersz (reprezentujący pojedyncze oczko siatki) należy
+do grupy 2, drugi do grupy 1, trzeci do grupy 3, itd.
+
 # Walidacja
+
+Nieodłącznym elementem modelowania jest walidacja opracowanych modeli. Wyzwaniem
+jest wybór właściwej metody grupowania dla konkretnego zbioru danych i określenie
+odpowiedniej liczby grup. Należy pamiętać, że zwiększenie liczby klastrów
+zwiększa podobieństwo między obiektami w klastrze, ale przy ich większej liczbie
+interpretacja staje się trudniejsza.
+
+Najczęstszym sposobem walidacji wyników grupowania jest użycie wewnętrznych
+metryk, takich jak wskaźnik Dunna, wskaźnik Daviesa-Bouldina lub wskaźnik
+sylwetki (*silhouette index*). Na potrzebny niniejszej analizy użyjemy tego
+ostatniego.
+
+Indeks sylwetki ocenia zbieżność i separację klastrów na podstawie odległości
+między obiektami w tym samym klastrze i między obiektami w różnych klastrach.
+Wartości tego wskaźnika mieszczą się w zakresie od -1 do 1. Wartość bliska 1
+wskazuje, że obiekt jest dobrze zgrupowany i znajduje się daleko od sąsiednich
+klastrów. Wartość bliska -1 sugeruje, że obiekt mógł zostać przypisany do
+niewłaściwego klastra. Wartość bliska 0 wskazuje, że obiekt znajduje się bardzo
+blisko granicy pomiędzy różnymi klastrami. Ogólnie rzecz biorąc, wyższa wartość
+tego wskaźnika wskazuje na lepsze wyniki grupowania. Więcej szczegółów można
+znaleźć w dokumentacji `cluster::silhouette()`.
+
+Spróbujmy teraz obliczyć wartości tego wskaźnika. Zasadniczo wymaga to obliczenie
+podobieństwa każdego obiektu do każdego obiektu, co w naszym przypadku jest
+zadaniem niemożliwym (nasz zbiór danych składa się z ponad 14 mln obiektów).
+Aby to wykonać, musimy wykorzystać mniejszą próbkę (załóżmy $n=10000$).
+W funkcji musimy określić dwa obiekty –- wektor z klastrami oraz macierz
+niepodobieństwa, którą można wcześniej obliczyć za pomocą funkcji `dist()`.
 
 ```{r}
 set.seed(123)
+# losowanie indeksów
 idx = sample(1:nrow(mat_omit), size = 10000)
 head(idx)
 ```
+
 ```{r}
+# obliczenie wskaźnika sylwetki
 sil = silhouette(mdl$cluster[idx], dist(mat_omit[idx, ]))
 summary(sil)
 ```
 
+Średnia zbieżność klastrów wynosi 0,43. Nie jest to najlepszy wynik (powinniśmy
+spróbować zwiększyć liczbę klastrów lub użyć innej metody grupowania). Możemy
+również zaprezentować wyniki na wykresie.
+
 ```{r}
-colors = rainbow(4) # wybierz 5 kolorów z wbudowanej palety `rainbow`
+colors = rainbow(4) # wybierz 4 kolory z wbudowanej palety `rainbow`
 plot(sil, border = NA, col = colors, main = "Silhouette Index")
 ```
 
 # Interpretacja
+
+Istotą grupowania jest utworzenie grupy podobnych obiektów, natomiast naszym
+zadaniem jest zinterpretowanie tego, co reprezentują utworzone grupy i nadanie
+im nazwy. Interpretacja jest trudnym zadaniem i często wyniki są niejasne.
+W tym celu konieczne jest przeanalizowanie statystyk opisowych klastrów oraz
+wykorzystanie różnych wykresów i kompozycji map. Bardzo przydatna jest także
+znajomość właściwości spektralnych obiektów.
+
+Spróbujmy zatem zinterpretować uzyskane skupienia, korzystając z wykresu
+pudełkowego. Największe możliwości wizualizacji danych dostarcza pakiet
+**ggplot2**. Tutaj można znaleźć darmowy [podręcznik](https://ggplot2-book.org/)
+oraz gotowe ["przepisy"](https://r-graphics.org/). Wymieniony pakiet wymaga
+przygotowania zbioru danych do odpowiedniej postaci, tj. dane muszą być
+przedstawione jako ramka danych w tzw. formie długiej (wiele wierszy), podczas
+gdy standardowe funkcje do wizualizacji wymagają formy szerokiej (wiele kolumn).
+Takiej konwersji można dokonać w prosty sposób używając pakietu **tidyr**.
 
 ```{r message=FALSE}
 library("tidyr") # transformacja danych
 library("ggplot2") # wizualizacja danych
 ```
 
+Jak zauważyliśmy wcześniej, nasz zbiór danych jest dość duży i nie ma potrzeby
+prezentowania wszystkich danych. Możemy to zrobić efektywniej, używając wcześniej
+wylosowanej próby. Połączmy zatem wylosowane wiersze z macierzy z odpowiadającymi
+im klastrami (`cbind()`). Następnie macierz zamienimy na ramkę danych
+(`as.data.frame()`).
+
 ```{r}
-stats = cbind(mat_omit[idx, ], cluster = mdl$cluster[idx])
+stats = cbind(mat_omit[idx, ], klaster = mdl$cluster[idx])
 stats = as.data.frame(stats)
 head(stats)
 ```
 
-```{r}
-stats = pivot_longer(stats, cols = 1:4, names_to = "band", values_to = "value")
-```
+Wyświetlone dane mają formę szeroką (każdy kanał spektralny zapisany jest
+w osobnej kolumnie). Teraz musimy zmienić formę, w której otrzymamy dwie
+kolumn -- kanał oraz wartość. W tym celu wykorzystamy funkcję `pivot_longer()`.
 
 ```{r}
-stats$cluster = as.factor(stats$cluster)
-stats$band = as.factor(stats$band)
+stats = pivot_longer(stats, cols = 1:4, names_to = "kanal", values_to = "wartosc")
+```
+
+Dla formalności możemy jeszcze zmienić typ danych (klastrów i kanałów) na
+kategoryczny (*factor*). W praktyce związane jest to z uproszczeniem struktury
+danych (przejście ze skali ilorazowej do nominalnej).
+
+```{r}
+stats$klaster = factor(stats$klaster)
+stats$kanal = factor(stats$kanal)
 head(stats)
 ```
 
+Ramka danych jest już przygotowana. Teraz stwórzmy prosty wykres pudełkowy.
+
 ```{r}
-ggplot(stats, aes(x = band, y = value, fill = cluster)) +
+ggplot(stats, aes(x = kanal, y = wartosc, fill = klaster)) +
   geom_boxplot()
 ```
 
+Zmieńmy kilka domyślnych parametrów żeby poprawić odbiór ryciny.
+
 ```{r}
-ggplot(stats, aes(x = band, y = value, fill = cluster)) +
+etykiety = c("Niebieski", "Zielony", "Czerwony", "Bliska\npodczerwień")
+
+ggplot(stats, aes(x = kanal, y = wartosc, fill = klaster)) +
   geom_boxplot(show.legend = FALSE) +
+  scale_x_discrete(limits = kanaly, labels = etykiety) +
   scale_fill_manual(values = colors) +
-  facet_wrap(vars(cluster)) +
+  facet_wrap(vars(klaster)) +
   xlab("Kanał") +
   ylab("Odbicie") +
   theme_light()
 ```
 
-TODO:
+Na podstawie powyższego wykresu możemy przeanalizować właściwości spektralne
+klastrów, a tym samym zinterpretować, jakie obiekty reprezentują. Uproszczone
+wnioski mogą być następujące:
 
-- posortowac kanaly i przetlumaczyc na j. polski
+- **Klaster 1** -- znacząca różnica pomiędzy odbiciem w kanale czerwonym a
+bliskiej podczerwieni wskazuje na obecność roślinności. W porównaniu do klastra
+3, iloraz między tymi kanałami jest mniejszy, co może świadczyć o niższym
+poziomie biomasy. Ten klaster może reprezentować obszary trawiaste i/lub
+pastwiska.
+- **Klaster 2** -- ten klaster wygląda podobnie do klastra 2, z tą różnicą,
+że we wszystkich pasmach występują wartości odstające bliskie zera. Wartości te
+reprezentują obiekty wodne pochłaniające promieniowanie. Oczywiście nie jest
+to poprawna klasyfikacja -- obiekty wodne i lasy powinny być przypisane do
+oddzielnych klastrów.
+- **Klaster 3** -- w porównaniu do klastra 1, wyższe wartości odbicia w kanale
+bliskiej podczerwieni mogą świadczyć o wyższym poziomie biomasy, w związku z
+czym klaster ten może reprezentować obszary o gęstej roślinności.
+- **Klaster 4** -- wyższe wartości odbicia kanałów spektralnych w porównaniu
+do pozostałych klastrów wskazują na jasne obiekty. W tym przypadku są to odkryte
+gleby bez pokrywy roślinnej, które zazwyczaj mają kolor jasnobrązowy lub szary.
 
 # Finalna mapa
 
+Ostatnim etapem jest stworzenie mapy klasyfikacyjnej pokrycia terenu na podstawie
+otrzymanego wektora z klastrami (`mdl$cluster`). Na początku musimy przygotować
+pusty wektor składający się z całkowitej liczby komórek rastra. Można to
+sprawdzić za pomocą funkcji `ncell()`. W naszym przypadku jest to 14 500 000
+komórek.
+
 ```{r}
-vec = rep(NA, ncell(r)) # przygotuj pusty wektor
+# przygotuj pusty wektor
+vec = rep(NA, ncell(r))
 ```
+
+Następnie musimy przypisać nasze grupy w wektorze w odpowiednie miejsca,
+tj. tym, które nie są zamaskowane (`NA`). Do niezamaskowanych
+wartości można odwołać się przez funkcję `complete.cases()`. 
 
 ```{r}
 # zastąp tylko te wartości, które nie są NA
 vec[complete.cases(mat)] = mdl$cluster 
 ```
 
+W ostatnim kroku należy skopiować metadane obiektu `r`, ale tylko z jedną
+warstwą, i przypisać mu wartości wektora `vec`.
+
 ```{r}
+# stwórz nowy raster
 clustering = rast(r, nlyrs = 1, vals = vec)
 ```
 
-```{r}
-plot(clustering, type = "classes", col = colors)
-```
+Zaprezentujmy wynik grupowania na mapie, używając odpowiednich kolorów i nazw
+klastrów.
 
 ```{r}
-colors = c("#2fbd2f", "#086209", "#9aed2d", "#d9d9d9")
-category = c("gęsta roślinność", "lasy/woda", "trawa", "odkryta gleba")
+colors = c("#9aed2d", "#086209", "#2fbd2f", "#d9d9d9")
+category = c("trawa", "lasy/woda", "gęsta roślinność", "odkryta gleba")
 plot(clustering, col = colors, type = "classes", levels = category,
      mar = c(3, 3, 3, 7))
 ```
+
+Jeśli wynik jest zadowalający, możemy zapisać go za pomocą funkcji
+`writeRaster()`. Taki plik można później wczytać w **R** lub innym programie
+obsługującym dane przestrzenne (np. **QGIS**). Dodatkowo, w przypadku danych
+kategorycznych, podczas zapisu warto ustawić typ danych jako `Byte` / `INT1U`
+(pod warunkiem, że liczba kategorii nie przekracza 255).
 
 ```{r eval=FALSE}
 writeRaster(clustering, "clustering.tif", datatype = "INT1U")
@@ -237,5 +437,35 @@ writeRaster(clustering, "clustering.tif", datatype = "INT1U")
 
 # Dalsze kroki
 
+Przedstawiona analiza stanowi jedynie zarys wykorzystania klasyfikacji
+nienadzorowanej do danych satelitarnych i następujące aspekty mogą zostać
+rozszerzone:
+
+- Post-processing wyników -- zastosowana metoda grupowania opiera się na
+podejściu pikselowym, co oznacza, że relacje między sąsiadującymi pikselelami nie
+są uwzględniane w klasyfikacji. Powoduje to efekt pieprzu i soli. Można to nieco
+poprawić, stosując filtr modalny (`terra::focal()`) lub filtr przesiewowy
+(`terra::sieve()`). Innym podejściem jest użycie zmiennych, które są obliczane
+w ruchomym oknie lub w mniejszych skalach przestrzennych.
+- Zwiększenie skuteczności klasteryzacji -- w naszym grupowaniu lasy i obiekty
+wodne zostały błędnie zaliczone do jednego klastra oraz strefa zabudowana nie
+została w ogóle wyodrębniona. W tym przypadku pojawia się kilka potencjalnych
+rozwiązan, np. wykorzystanie większej liczby klastrów lub innego algorymtu
+grupującego, użycie innych zmiennych (tj. pozostałych kanałów spektralnych,
+obliczenie wybranych wskaźników spektralnych czy wysokości obiektów z modelu
+wysokościowego). Istotna jest także kwestia odpowiedniego doboru tych zmiennych
+oraz redukcji wymiarowośći w przypadku skorelowanych zmiennych.
+- Klasyfikacja na większych lub nowych obszarach -- nasza analiza obejmowała
+niewielki obszar, dzięki czemu mogliśmy załadować wszystkie dane do pamięci.
+Zwykle jednak model trenowany jest na reprezentatywenj próbie, a następnie
+stosowany do całego obszaru. Niestety, funkcja `kmeans()` nie posiada metody
+predykcji, więc musimy napisać ją sami. Nie jest to skomplikowane; wymaga
+jedynie obliczenia odległości pikseli dla każdego klastra i wybrania najbliższego.
+Dodatkowo, aby przyspieszyć predykcję, warto byłoby zrównoleglić ten proces.
+Finalnie, należy pamiętać, że opracowany model może działać niepoprawnie na
+innych obszarach.
+- Porównanie wyników z klasyfikacją nadzorowaną -- istnieje wiele map pokrycia
+terenu (np. CORINE Land Cover, ESA WorldCover, ESRI Land Cover). Warto porównać
+te dwa podejścia.
 
 
