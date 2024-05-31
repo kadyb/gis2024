@@ -1,5 +1,5 @@
 ---
-title: "Dane satelitarne"
+title: "Dostęp do danych satelitarnych"
 author: "Krzysztof Dyba"
 output:
   html_document:
@@ -24,7 +24,7 @@ rolnictwa precyzyjnego. Źródłem danych mogą być:
 np. światło widzialne, bliska podczerwień, podczerwień krótkofalowa czy
 podczerwień termalna)
 * sensory radarowe (emitują impulsy radarowe, a następnie mierzą odbitą energię.
-W przeciwieństwie do sensorów optycznych być wykorzystywane do obrazowania
+W przeciwieństwie do sensorów optycznych mogą być wykorzystywane do obrazowania
 powierzchni przez chmury oraz w nocy)
 
 W kontekście ogromnych zbiorów danych satelitarnych nie sposób pominąć
@@ -43,7 +43,7 @@ wymaganych zakresów danych bez przesyłania niepotrzebnych części.
   myślą o środowiskach chmurowych. Opiera się na standardowym formacie Geotiff,
   ale jest optymalizowany pod kątem wydajnego dostępu i przetwarzania w chmurze.
   Oprócz *byte serving*, stosowane są podglądy (*overviews*), czyli warstwy rastra
-  w niższej rozdzielczości, umożliwiając renderowanie rastra bez konieczności
+  w niższej rozdzielczości, umożliwiając jego renderowanie bez konieczności
   dostępu do danych w pełnej rozdzielczości (https://www.cogeo.org/).
   * **V**irtual **F**ile **S**ystems -- umożliwia jednolity dostęp do różnych
   typów przechowywania danych (https://gdal.org/user/virtual_file_systems.html).
@@ -59,9 +59,9 @@ przez serię etapów (funkcji), w których wynik jednego etapu służy jako wej�
 do kolejnego. W praktyce sprawia to, że kod jest bardziej przejrzysty i
 łatwiejszy do zrozumienia.
 
-W R wbudowanym operatorem przypływu jest `|>`. Do jego zapisu można wykorzystać
-skrót klawiszowy `CTRL + SHIFT + M`, jednak wymaga to zaznaczenia opcji
-`Use native pipe operator` (zakłada `Code > Editing`) w RStudio.
+W **R** wbudowanym operatorem przypływu jest `|>`. Do jego zapisu można
+wykorzystać skrót klawiszowy `CTRL + SHIFT + M`, jednak wymaga to zaznaczenia
+opcji `Use native pipe operator` (zakłada `Code > Editing`) w **RStudio**.
 
 Przykładowo, możemy wylosować 10 liczb z rozkładu normalnego, następnie obliczyć
 wartość bezwzględną, posortować w kolejności rosnącej i finalnie nadpisać obiekt
@@ -77,8 +77,8 @@ dane
 
 # Pozyskiwanie danych
 
-Do obsługi katalogów STAC w R służy pakiet **rstac**, który umożliwia wyszukiwanie
-i pobieranie danych zgodnie z tym standardem.
+Do obsługi katalogów STAC w **R** służy pakiet **rstac**, który umożliwia
+wyszukiwanie i pobieranie danych zgodnie z tym standardem.
 
 ```{r}
 library("rstac")
@@ -90,7 +90,6 @@ przykładzie wykorzystamy usługę [Earth Search](https://element84.com/earth-se
 która dostarcza m. in. zdjęcia satelitarne z Landsata oraz Sentinela.
 
 ```{r}
-# stac_source = stac("https://planetarycomputer.microsoft.com/api/stac/v1")
 stac_source = stac("https://earth-search.aws.element84.com/v1")
 stac_source
 ```
@@ -120,15 +119,38 @@ samodzielnie sprawdzić jego strukturę używając funkcji `View()`.
 
 Domyślnie, wyświetlanych jest tylko 10 pierwszych zbiorów danych. Z faktu, iż
 obiekt jest złożoną listą, to jego eksploracja jest bardziej skomplikowana w 
-porównaniu do obiektów jednowymiarowych (np. łańcuchów znaków). Jeżeli chcemy
-sprawdzić pozostałe dostępne zbiory danych, to należy wykorzystać funkcje ..........
+porównaniu do obiektów jednowymiarowych (np. wektorów). Jeżeli chcemy
+sprawdzić pozostałe dostępne zbiory danych, to należy wykorzystać funkcje
+`lapply()`, która wykonuje iterację po każdym elemencie danych wejściowych
+(w tym przypadku listy), stosując przy tym podaną funkcję. Jako wynika zwracana
+jest lista, którą następnie można uprościć do wektora używając funkcji
+`unlist()`.
+
+Dodatkowo, dla uproszczenia możemy zastosować funkcję lambda (inaczej funkcję
+anonimową). Pozwala to zamienić słowo kluczowe `function()` na znak `\()`,
+np. zamiast `lapply(lista, function(x) x^2)` będzie `lapply(lista, \(x) x^2)`.
 
 ```{r}
 kolekcje_nazwy = unlist(lapply(kolekcje$collections, \(x) x$id))
 kolekcje_nazwy
-# landsat-c2-l2, sentinel-2-c1-l2a
-# sentinel-2-l2a jest stara
 ```
+
+Uwaga! Dane z Sentinela-2 znajdują się w dwóch kolekcjach, tj. `sentinel-2-l2a`
+(starsza) i `sentinel-2-c1-l2a` (nowsza). Aktualnie trwa aktualizacja produktów
+do nowszej kolekcji `sentinel-2-c1-l2a` i ta powinna być preferowana, natomiast
+starsza kolekcja w przyszłości nie będzie obsługiwana.
+
+Teraz wyszukajmy dostępne produkty w ramach kolekcji `sentinel-2-c1-l2a`. Do
+wyszukiwania danych służy funkcja `stac_search()` i umożliwia ona zdefiniowanie
+takich parametrów jak:
+
+- kolekcja (`collections`)
+- zakres przestrzenny w układzie WGS 84 (`bbox`)
+- interwał czasowy w standardzie [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339)
+(`datetime`)
+- maksymalna liczba produktów (`limit`)
+
+W tym przypadku żądanie musimy wysłać za pomocą metody POST.
 
 ```{r}
 stac_source |>
@@ -141,13 +163,30 @@ stac_source |>
 obrazy
 ```
 
+Zostało znalezionych 288 produktów, które spełniają zadane warunki. Możemy
+zobaczyć jakie warstwy (*assets*) i atrybuty (*fields*) są powiązane. Sprawdźmy
+przykładowe cechy produktu (*properties*).
+
 ```{r}
+# pierwsze 15 cech
 names(obrazy$features[[1]]$properties)[1:15]
 ```
+
+Mamy dostęp do 44 cech, które opisują produkt, m. in. data pozyskania, nazwa
+platformy satelitarnej, procentowe zachmurzenie sceny, układ współrzędnych,
+ID sceny, itd.
+
+Sprawdźmy zachmurzenie wyszukanych scen. Określone jest one w atrybucie
+`eo:cloud_cover`. W tym celu ponownie musimy wykorzystać funkcję `lapply()`.
 
 ```{r}
 unlist(lapply(obrazy$features, \(x) x$properties$"eo:cloud_cover"))
 ```
+
+Wyszukane sceny charakteryzują się wysokim zachmurzeniem w związku z czym ich
+przydatność jest ograniczona. Oczywiście możemy dokonać prostej filtracji
+modyfikując nasze poprzednie zapytanie. Do filtrowania przeznaczona jest
+funkcja `ext_query()`.
 
 ```{r}
 stac_source |>
@@ -162,49 +201,122 @@ stac_source |>
 unlist(lapply(obrazy$features, \(x) x$properties$"eo:cloud_cover"))
 ```
 
-```{r}
-## w tym przypadku sciezka do pliku jest skomplikowana
-# obrazy |>
-#   items_select(1) |>
-#   assets_download(asset_names = NULL)
-```
+Alternatywnie, zamiast używać wielopoziomowych list, możemy dokonać konwersji
+obiektu `obrazy` do "przestrzennej ramki danych" (*simple features data frame*)
+za pomocą funkcji `items_as_sf()`. Jednakże, na ten moment jest ona
+eksperymentalna i mogą pojawić się niespodziewane problemy.
 
 ```{r}
-# obrazy |>
-#   items_select(1) |>
-#   assets_select(asset_names = c("blue", "green", "red")) |>
-#   assets_url(append_gdalvsi = TRUE) -> urls
+df = items_as_sf(obrazy)
+plot(sf::st_geometry(df)[1], main = "Zasięg sceny", axes = TRUE)
 ```
+
+Po dokonaniu selekcji scen, możemy przystąpić do ich pobrania. Zasadniczo,
+można to wykonać na kilka różnych sposobów używając:
+
+- funkcji `assets_download()` z pakietu **rstac**
+- funkcji `download.file()` wbudowanej w **R**
+- modułu `/vsicurl/` dostępnego w pakietach obsługujących GDAL, np. **terra**
+- narzędzi GDAL (np. [gdalwarp](https://gdal.org/programs/gdalwarp.html))
+dostępnych m. in. w powłoce [OSGeo4W](https://www.osgeo.org/projects/osgeo4w/)
+na Windows
+
+**assets_download()**
+
+W funkcji `assets_download()` możemy zdefiniować, które warstwy chcemy pobrać
+(argument `asset_names`). Jednak ma ona pewien mankament związany z dość
+skomplikowanym zapisem ścieżek do pobranych plików wynikający ze struktury
+katalogów STAC.
+
+```{r eval=FALSE}
+obrazy |>
+  items_select(1) |>
+  assets_download(asset_names = c("blue", "green", "red"))
+```
+
+Sceny satelitarne zazwyczaj zawierają niskorozdzielcze miniaturki w kompozycji
+RGB. W przypadku danych z Sentinela-2 zapisane są one jako `thumbnail.jpg`.
+Jeśli chcemy szybko podejrzeć dane, to możemy odwołać się do tej warstwy
+i pozyskać do niej odnośnik przy pomocy funkcji `assets_url()`. Do wczytania
+pliku .jpg wymagany jest dodatkowy pakiet, np. **imager**, który posiada funkcję
+`load.image()`.
+
+```{r message=FALSE}
+library("imager")
+par(mar = c(0, 0, 0, 0)) # usuń marginesy
+
+obrazy |>
+  items_select(1) |>
+  assets_select(asset_names = "thumbnail") |>
+  assets_url() |>
+  load.image() |>
+  plot(axes = FALSE)
+```
+
+**download.file()**
+
+Tak jak w powyższym przypadku, możliwe jest pozyskanie odnośników do pozostałych
+warstw i pobranie danych przy użyciu funkcji `download.file()`, wymagającej
+wskazania odnośników, z których zostaną pobrane dane oraz ścieżek zapisu.
 
 ```{r}
-# r = rast(urls)
-# r
+obrazy |>
+   items_select(1) |>
+   assets_select(asset_names = c("blue", "green", "red")) |>
+   assets_url() -> urls
+urls
 ```
+
+Utwórzmy nowy folder o nazwie `sentinel` używając funkcji `dir.create()`.
+Do stworzenia ścieżek zapisu należy podać nazwę pliku wraz z rozszerzeniem.
+W tym celu można zastosować funkcję `basename()` do wyodrębnienia tych nazw
+z odnośników. Następnie należy połączyć ścieżkę do katalogu ze ścieżką do pliku
+wykorzystując funkcję `file.path()`.
+
+```{r eval=FALSE}
+dir.create("sentinel")
+rastry = file.path("sentinel", basename(sentinel))
+```
+
+Finalnie, zastosujemy pętlę, która pobierze wszystkie pliki do lokalizacji
+określonej przez nas.
+
+```{r eval=FALSE}
+for (i in seq_along(sentinel)) {
+  download.file(sentinel[i], rastry[i], mode = "wb")
+}
+```
+
+**/vsicurl/**
+
+Ostatnim sposobem jest wykorzystanie modułu `/vsicurl/` pochodzącego z GDAL bez
+potrzeby pobierania całego zbioru danych. Działanie jest proste -- wystarczy
+dodać przedrostek `/vsicurl/` do odnośników z rastrami używając funkcji
+`paste0()`.
 
 ```{r}
-# i = items_as_sf(obrazy)
+urls = paste0("/vsicurl/", urls)
+r = rast(urls)
+r
 ```
 
-
-TODO:
-
-- pobieranie danych z `download.file()`
-- pobieranie miniaturki
-- dodać tutoriale
+Więcej informacji na temat wyszukiwania i pozyskiwania danych za pomocą
+standardu STAC znajdziesz w oficjalnym tutorialu
+[**Download data from a STAC API using R, rstac, and GDAL**](https://stacspec.org/en/tutorials/1-download-data-using-r/)
+napisanym przez Michael Mahoney.
 
 # Zadanie
 
-**9.** Pobierz dowolną scenę satelitarną z Landsata 8/9 lub Sentinela 2 o
-niskim zachmurzeniu (maksymalnie 20%) i następnie:
+**9.** Pobierz dowolną scenę satelitarną z Sentinela-2 o niskim zachmurzeniu
+(maksymalnie 20%) i następnie:
 
 - sprawdź metadane rastrów
 - przygotuj wizualizację RGB
 - pobierz losową próbę 10 tys. punktów dla kanału niebieskiego, zielonego,
-czeronwego oraz bliskiej podczerwieni i zaprezentuj statystyki opisowe
+czerwonego oraz bliskiej podczerwieni i zaprezentuj statystyki opisowe
 oraz porównaj histogramy
-- dodatkowo dla kanału czerownego oraz bliskiej podczerwieni wykonaj
-wykres rozrzutu oraz oblicz współczynik korelacji Pearsona
+- dodatkowo dla kanału czerwonego oraz bliskiej podczerwieni wykonaj
+wykres rozrzutu oraz oblicz współczynnik korelacji Pearsona
 - oblicz znormalizowany różnicowy wskaźnik wegetacji
 ([NDVI](https://gisgeography.com/ndvi-normalized-difference-vegetation-index/))
 i przygotuj wizualizację
-
