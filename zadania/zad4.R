@@ -25,12 +25,12 @@ colnames(macierz_odleglosci) = rownames(macierz_odleglosci) = centroidy$JPT_NAZW
 
 
 # Zastąpienie zer
-macierz_odleglosci[lower.tri(macierz_odleglosci, diag = TRUE)] <- NA
-diag(macierz_odleglosci)
+diag(macierz_odleglosci) = NA
 
 # Znalezienie indeksów minimalnej i maksymalnej odległości
 min_index <- which(macierz_odleglosci == min(macierz_odleglosci, na.rm = TRUE), arr.ind = TRUE)
-min_index #najbliżej powiat rybnicki
+min_index #zwraca parę powiatów: powiat Rybnik i powiat rybnicki, co oznacza, że są to powiaty położone najbliżej siebie pod względem odległości 
+
 max_index <- which(macierz_odleglosci == max(macierz_odleglosci, na.rm = TRUE), arr.ind = TRUE)
-max_index #najdalej powiat Świnoujście
+max_index #zwraca parę powiatów: powiat bieszczadzki i powiat Świnoujście, co oznacza, że są to powiaty położone najdalej siebie pod względem odległości 
 
