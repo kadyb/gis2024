@@ -1553,8 +1553,8 @@ dane |&gt;
   abs() |&gt;
   sort() -&gt; dane
 dane</code></pre>
-<pre><code>##  [1] 0.08965725 0.18781276 0.28309267 0.49020759 0.56443457 0.63340718
-##  [7] 0.72367857 0.87907574 1.49962037 1.87399438</code></pre>
+<pre><code>##  [1] 0.1542144 0.1747443 0.1949715 0.2234891 0.2378379 0.7143219 1.0003207
+##  [8] 1.0516586 1.3784942 2.0626081</code></pre>
 </div>
 </div>
 <div id="pozyskiwanie-danych" class="section level1">
@@ -1606,14 +1606,12 @@ kolekcje</code></pre>
 ## - field(s): collections, links, context</code></pre>
 <p>W odpowiedzi otrzymaliśmy obiekt, który jest wielopoziomową listą
 list. Można samodzielnie sprawdzić jego strukturę używając funkcji
-<code>View()</code>.</p>
-<p>Domyślnie, wyświetlanych jest tylko 10 pierwszych zbiorów danych. Z
-faktu, iż obiekt jest złożoną listą, to jego eksploracja jest bardziej
+<code>View()</code>. Eksploracja takich obiektów jest bardziej
 skomplikowana w porównaniu do obiektów jednowymiarowych (np. wektorów).
-Jeżeli chcemy sprawdzić pozostałe dostępne zbiory danych, to należy
-wykorzystać funkcje <code>lapply()</code>, która wykonuje iterację po
-każdym elemencie danych wejściowych (w tym przypadku listy), stosując
-przy tym podaną funkcję. Jako wynika zwracana jest lista, którą
+Przykładowo, jeżeli chcemy sprawdzić pozostałe dostępne zbiory danych,
+to należy wykorzystać funkcje <code>lapply()</code>, która wykonuje
+iterację po każdym elemencie danych wejściowych (w tym przypadku listy),
+stosując przy tym podaną funkcję. Jako wynika zwracana jest lista, którą
 następnie można uprościć do wektora używając funkcji
 <code>unlist()</code>.</p>
 <p>Dodatkowo, dla uproszczenia możemy zastosować funkcję lambda (inaczej

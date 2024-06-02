@@ -115,16 +115,13 @@ kolekcje
 ```
 
 W odpowiedzi otrzymaliśmy obiekt, który jest wielopoziomową listą list. Można
-samodzielnie sprawdzić jego strukturę używając funkcji `View()`.
-
-Domyślnie, wyświetlanych jest tylko 10 pierwszych zbiorów danych. Z faktu, iż
-obiekt jest złożoną listą, to jego eksploracja jest bardziej skomplikowana w 
-porównaniu do obiektów jednowymiarowych (np. wektorów). Jeżeli chcemy
-sprawdzić pozostałe dostępne zbiory danych, to należy wykorzystać funkcje
-`lapply()`, która wykonuje iterację po każdym elemencie danych wejściowych
-(w tym przypadku listy), stosując przy tym podaną funkcję. Jako wynika zwracana
-jest lista, którą następnie można uprościć do wektora używając funkcji
-`unlist()`.
+samodzielnie sprawdzić jego strukturę używając funkcji `View()`. Eksploracja
+takich obiektów jest bardziej skomplikowana w porównaniu do obiektów
+jednowymiarowych (np. wektorów). Przykładowo, jeżeli chcemy sprawdzić pozostałe
+dostępne zbiory danych, to należy wykorzystać funkcje `lapply()`, która wykonuje
+iterację po każdym elemencie danych wejściowych (w tym przypadku listy),
+stosując przy tym podaną funkcję. Jako wynika zwracana jest lista, którą
+następnie można uprościć do wektora używając funkcji `unlist()`.
 
 Dodatkowo, dla uproszczenia możemy zastosować funkcję lambda (inaczej funkcję
 anonimową). Pozwala to zamienić słowo kluczowe `function()` na znak `\()`,
