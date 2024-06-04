@@ -126,3 +126,5 @@ results <- data.frame(
   RMSE = c(rmse_nn, rmse_poly, rmse_idw, rmse_kr, tps_rmse)
 )
 print(results)
+
+# Jak można zauważyć przy metodzie cienkiej płyty wartość jest najmniejsza co oznacza że ma najmiejszy błąd średnio kwadrowowy.
