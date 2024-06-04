@@ -1545,12 +1545,12 @@ legenda$ID = as.integer(legenda$ID)</code></pre>
 </div>
 <div id="przygotowanie-danych" class="section level1">
 <h1>Przygotowanie danych</h1>
-<p>Jak można zauważyć, nasze rastry różnią się rozdzielczością
-przestrzenną (scena Landsat ma 30 m, natomiast klasy pokrycia terenu 10
-m). Kiedy rastry posiadają różne rozdzielczości, to nie jest możliwe
-wykonywanie na nich operacji matematycznych. W takim przypadku musimy
-sprowadzić je do jednakowej rozdzielczości. Ten proces nazywa się
-przepróbkowaniem (<em>resampling</em>).</p>
+<p>Pozyskane rastry różnią się rozdzielczością przestrzenną (scena
+Landsat ma 30 m, natomiast klasy pokrycia terenu 10 m). Kiedy rastry
+posiadają różne rozdzielczości, to nie jest możliwe wykonywanie na nich
+operacji matematycznych. W takim przypadku musimy sprowadzić je do
+jednakowej rozdzielczości. Ten proces nazywa się przepróbkowaniem
+(<em>resampling</em>).</p>
 <p>Przepróbkowanie można wykonać:</p>
 <ul>
 <li>Z większej rozdzielczości do mniejszej, np. 100 m -&gt; 500 m
@@ -1651,7 +1651,7 @@ train = dane[trainIndex, ] # wybierz próbki treningowe
 test = dane[-trainIndex, ] # wybierz próbki testowe</code></pre>
 <p>Po podzieleniu danych możemy przystąpić do procesu trenowania. W tym
 przykładzie wykorzystamy <a href="https://www.statsoft.pl/textbook/stclatre.html">drzewo
-decyzyjne</a>. i funkcję <code>rpart()</code>, która wymaga
+decyzyjne</a> i funkcję <code>rpart()</code>, która wymaga
 zdefiniowania:</p>
 <ol style="list-style-type: decimal">
 <li>Zmiennej zależnej i zmiennych zależnych za pomocą odpowiedniej

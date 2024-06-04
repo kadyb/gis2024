@@ -99,11 +99,11 @@ legenda$ID = as.integer(legenda$ID)
 
 # Przygotowanie danych
 
-Jak można zauważyć, nasze rastry różnią się rozdzielczością przestrzenną (scena
-Landsat ma 30 m, natomiast klasy pokrycia terenu 10 m). Kiedy rastry posiadają
-różne rozdzielczości, to nie jest możliwe wykonywanie na nich operacji
-matematycznych. W takim przypadku musimy sprowadzić je do jednakowej
-rozdzielczości. Ten proces nazywa się przepróbkowaniem (*resampling*).
+Pozyskane rastry różnią się rozdzielczością przestrzenną (scena Landsat ma 30 m,
+natomiast klasy pokrycia terenu 10 m). Kiedy rastry posiadają różne
+rozdzielczości, to nie jest możliwe wykonywanie na nich operacji matematycznych.
+W takim przypadku musimy sprowadzić je do jednakowej rozdzielczości. Ten proces
+nazywa się przepróbkowaniem (*resampling*).
 
 Przepróbkowanie można wykonać:
 
@@ -228,7 +228,7 @@ test = dane[-trainIndex, ] # wybierz próbki testowe
 ```
 
 Po podzieleniu danych możemy przystąpić do procesu trenowania. W tym przykładzie
-wykorzystamy [drzewo decyzyjne](https://www.statsoft.pl/textbook/stclatre.html).
+wykorzystamy [drzewo decyzyjne](https://www.statsoft.pl/textbook/stclatre.html)
 i funkcję `rpart()`, która wymaga zdefiniowania:
 
 1. Zmiennej zależnej i zmiennych zależnych za pomocą odpowiedniej formuły
