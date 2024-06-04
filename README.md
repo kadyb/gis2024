@@ -53,7 +53,7 @@ Materiały dostępne są w postaci interaktywnych notebooków (R Markdown).
 * [Interpolacja przestrzenna](https://kadyb.github.io/gis2024/notebooks/06_interpolacja.html)
 * [Dostęp do danych satelitarnych](https://kadyb.github.io/gis2024/notebooks/07_dane_satelitarne.html)
 * [Klasyfikacja nienadzorowana](https://kadyb.github.io/gis2024/notebooks/08_klasteryzacja.html)
-* Klasyfikacja nadzorowana
+* [Klasyfikacja nadzorowana](https://kadyb.github.io/gis2024/notebooks/09_klasyfikacja.html)
 
 # Zaliczenie
 
