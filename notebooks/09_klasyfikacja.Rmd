@@ -1,0 +1,356 @@
+---
+title: "Klasyfikacja nadzorowana"
+author: "Krzysztof Dyba"
+output:
+  html_document:
+    toc: yes
+    toc_float: true
+---
+
+```{r message=FALSE}
+library("terra")
+```
+
+# Pozyskanie danych
+
+W repozytorium [Zenodo](https://zenodo.org/records/7299645) znajdziesz archiwum
+*.zip* zawierające zobrazowania satelitarne z Landsata, mapę pokrycia terenu
+[Sentinel-2 Global Land Cover](https://s2glc.cbk.waw.pl/) z legendą zapisaną
+w pliku *.csv* oraz poligon z zasięgiem powiatu śremskiego w formacie *.gpkg*.
+Struktura katalogu wygląda następująco:
+
+```
+dane/
+.. dane/
+.... powiat_sremski.gpkg
+.... S2GLC_T33UXT.csv
+.... S2GLC_T33UXT.tif
+.... landat/
+...... LC08_L2SP_190024_20200418_20200822_02_T1_MTL.xml
+...... LC08_L2SP_190024_20200418_20200822_02_T1_SR_B1.TIF
+...... LC08_L2SP_190024_20200418_20200822_02_T1_SR_B2.TIF
+...... LC08_L2SP_190024_20200418_20200822_02_T1_SR_B3.TIF
+...... LC08_L2SP_190024_20200418_20200822_02_T1_SR_B4.TIF
+...... LC08_L2SP_190024_20200418_20200822_02_T1_SR_B5.TIF
+...... LC08_L2SP_190024_20200418_20200822_02_T1_SR_B6.TIF
+...... LC08_L2SP_190024_20200418_20200822_02_T1_SR_B7.TIF
+```
+
+Dostęp do zaprezentowanych plików możemy uzyskać bez potrzeby ich całkowitego
+pobierania używając modułów `/vsizip/` (dostęp do archiwów *.zip*) oraz
+`/vsicurl/` (zdalny dostęp do plików). Kolejność operacji jest następująca --
+najpierw musimy połączyć się ze źródłem, a później uzyskać dostęp do archiwum,
+czyli w naszym przypadku będzie to:
+
+```
+1. /vsicurl/https://zenodo.org/records/7299645/files/dane.zip
+2. /vsizip/vsicurl/https://zenodo.org/records/7299645/files/dane.zip
+```
+
+Następnie używając ukośników (`/`) należy odwołać się do określonego pliku:
+
+```
+3. /vsizip/vsicurl/https://zenodo.org/records/7299645/files/dane.zip/dane/dane/S2GLC_T33UXT.tif
+```
+
+Wczytajmy teraz wszystkie niezbędne dane.
+
+```{r}
+url = "https://zenodo.org/records/7299645/files/dane.zip"
+```
+
+```{r}
+s2glc = paste0("/vsizip/vsicurl/", url, "/dane/dane/S2GLC_T33UXT.tif")
+s2glc = rast(s2glc)
+```
+
+```{r}
+poly = paste0("/vsizip/vsicurl/", url, "/dane/dane/powiat_sremski.gpkg")
+poly = vect(poly)
+```
+
+```{r}
+landsat = c("LC08_L2SP_190024_20200418_20200822_02_T1_SR_B1.TIF",
+            "LC08_L2SP_190024_20200418_20200822_02_T1_SR_B2.TIF",
+            "LC08_L2SP_190024_20200418_20200822_02_T1_SR_B3.TIF",
+            "LC08_L2SP_190024_20200418_20200822_02_T1_SR_B4.TIF",
+            "LC08_L2SP_190024_20200418_20200822_02_T1_SR_B5.TIF",
+            "LC08_L2SP_190024_20200418_20200822_02_T1_SR_B6.TIF",
+            "LC08_L2SP_190024_20200418_20200822_02_T1_SR_B7.TIF")
+landsat = paste0("/vsizip/vsicurl/", url, "/dane/dane/landsat/", landsat)
+landsat = rast(landsat)
+names(landsat) = paste0("B", 1:7) # zamień nazwy
+```
+
+```{r}
+legenda = paste0("/vsizip/vsicurl/", url, "/dane/dane/S2GLC_T33UXT.csv")
+legenda = vect(legenda)
+```
+
+W przypadku legendy musimy zastosować dwa dodatkowe kroki polegające na
+zamianie obiektu wektorowego (SpatVector) na prostą ramkę danych (ponieważ
+ten obiekt de facto nie posiada geometrii) oraz zamianie typu atrybutu ID z
+tekstowego na liczbę całkowitą.
+
+```{r}
+legenda = as.data.frame(legenda)
+legenda$ID = as.integer(legenda$ID)
+```
+
+# Przygotowanie danych
+
+Jak można zauważyć, nasze rastry różnią się rozdzielczością przestrzenną (scena
+Landsat ma 30 m, natomiast klasy pokrycia terenu 10 m). Kiedy rastry posiadają
+różne rozdzielczości, to nie jest możliwe wykonywanie na nich operacji
+matematycznych. W takim przypadku musimy sprowadzić je do jednakowej
+rozdzielczości. Ten proces nazywa się przepróbkowaniem (*resampling*).
+
+Przepróbkowanie można wykonać:
+
+- Z większej rozdzielczości do mniejszej, np. 100 m -> 500 m (*downsampling*,
+*downscaling*)
+- Z mniejszej rozdzielczości do większej, np. 500 m -> 100 m (*upsampling*,
+*upscaling*)
+
+Z racji iż proste metody przepróbkowania nie zwiększają ilości informacji przy
+zwiększaniu rozdzielczości przestrzennej, to lepiej wykonać przepróbkowanie do
+niższej rozdzielczości.
+
+Przepróbkowanie można wykonać przy pomocy funkcji `resample()`. Dostępne są
+różne metody przepróbkowania, ale w przypadku danych kategorycznych, koniecznie
+trzeba wykorzystać algorytm najbliższego sąsiada (`method = "near"`) lub wartość
+modalną, dominantę (`method = "mode"`). Jeśli tego nie zrobimy, to ID kategorii
+zostaną zmienione.
+
+```{r}
+s2glc = resample(s2glc, landsat, method = "near")
+res(s2glc)
+```
+
+Dotnijmy nasze warstwy do zasięgu poligonu.
+
+```{r}
+landsat = crop(landsat, poly, mask = TRUE)
+s2glc = crop(s2glc, poly, mask = TRUE)
+```
+
+Zauważ, że wartości odbicia spektralnego nie są w zakresie od 0 do 1. Oznacza
+to, że samodzielnie musimy dokonać korekcji. W przypadku danych z Landsata 8,
+parametry są następujące:
+
+- współczynnik skalowania: $0.0000275$
+- przesunięcie: $-0.2$
+
+```{r}
+landsat = landsat * 0.0000275 - 0.2
+```
+
+Usuńmy jeszcze wartości odstające.
+
+```{r}
+landsat[landsat < 0] = NA
+landsat[landsat > 1] = NA
+```
+
+Tak jak podczas klasteryzacji, algorytmy klasyfikacji nadzorowanej również
+wymagają określonej struktury danych wejściowych, np. ramki danych
+(*data frame*). Jednak znaczącą różnicą jest obecność zmiennej referencyjnej
+(w naszym przykładzie klasy pokrycia terenu). Pozostałe kolumny to zmienne
+wyjaśniające.
+
+```{r}
+dane = cbind(values(s2glc), values(landsat)) # połączenie kolumn w macierzy
+dane = as.data.frame(dane) # konwersja macierzy do ramki danych
+dane = na.omit(dane) # usunięcie brakujących wartości
+```
+
+Jedna z klas w zbiorze danych to chmury, które zostały sklasyfikowane podczas
+tworzenia mapy z klasami pokrycia terenu. Wiadomo, że zachmurzenie jest zmienne
+w czasie, dlatego powinniśmy usunąć tę klasę (`ID = 0`).
+
+```{r}
+# usuń piksele reprezentujące klasę chmury
+dane = dane[!dane$S2GLC_T33UXT == 0, ]
+```
+
+W celu ułatwienia analizy danych, możemy zmienić ID klasy na nazwę. Dopasowania
+nazw klas do ID można wykonać za pomocą funkcji `merge()`. Dodatkowo, zmieńmy
+jeszcze nazwę kolumny z `S2GLC_T33UXT` na `klasa`.
+
+```{r}
+dane = merge(dane, legenda[, -2], by.x = "S2GLC_T33UXT", by.y = "ID")
+dane = dane[, -1] # usuń pierwszą kolumnę z ID klasy
+colnames(dane)[8] = "klasa" # zmień nazwę kolumny
+dane$klasa = as.factor(dane$klasa) # zmień typ danych na kategoryczny
+```
+
+Dane wejściowe wyglądają teraz następująco:
+
+```{r}
+head(dane)
+```
+
+Przed klasyfikacją warto sprawdzić częstość występowania poszczególnych
+kategorii. Jeśli część kategorii pojawia się bardzo często, a niektóre prawie
+wcale, to wtedy mamy problem z niezbalansowanym zbiorem danych. W takiej
+sytuacji, kiedy model posiada zbyt mało przykładów którejś klasy (np. bagna),
+to nie jest możliwe żeby nauczył się rozpoznawać tę klasę. Oprócz tego, wynik
+jakości klasyfikatora jest zbyt optymistyczny (tzn. w rzeczywistości działa
+gorzej niż na zbiorze uczącym).
+
+Częstość występowania klas można sprawdzić za pomocą funkcji `table()` na
+kolumnie kategorycznej i następnie zamienić to na postać ułamkową używając
+funkcji `prop.table()`.
+
+```{r}
+tabela = table(dane$klasa)
+prop.table(tabela) * 100
+```
+
+# Klasyfikacja
+
+```{r}
+library("rpart") # model klasyfikacyjny
+library("rpart.plot") # wizualizacja modelu
+```
+
+Każdy opracowany model powinien zostać poddany walidacji (weryfikacji) na
+niezależnym zbiorze danych (tj. takim, który nie został wykorzystany na etapie
+modelowania). Zatem podzielmy nasz zbiór wejściowy na podzbiór treningowy
+i testowy.
+
+```{r}
+set.seed(1) # ziarno losowości
+n = round(0.7 * nrow(dane)) # proporcja próby 70%
+trainIndex = sample(nrow(dane), size = n) # wylosuj indeksy
+train = dane[trainIndex, ] # wybierz próbki treningowe
+test = dane[-trainIndex, ] # wybierz próbki testowe
+```
+
+Po podzieleniu danych możemy przystąpić do procesu trenowania. W tym przykładzie
+wykorzystamy [drzewo decyzyjne](https://www.statsoft.pl/textbook/stclatre.html).
+i funkcję `rpart()`, która wymaga zdefiniowania:
+
+1. Zmiennej zależnej i zmiennych zależnych za pomocą odpowiedniej formuły
+2. Zbioru danych treningowych (`data = train`)
+3. Metody (`method = "class"`)
+
+Odnośnie punkty pierwszego, formułę można zdefiniować na dwa sposoby:
+
+1. Używając nazw poszczególnych zmiennych: `klasa ~ B1 + B2 + B3 + B4 + B5 + B6 + B7`
+2. Używając kropki: `klasa ~ .`. Kropka zastępuje wszystkie nazwy zmiennych
+wyjaśniających z ramki danych
+
+Znak `~` (tylda) oznacza “jest zależne od”, czyli *klasa pokrycia terenu jest
+zależna od kanałów B1 do B7*.
+
+```{r}
+mdl = rpart(klasa ~ ., data = train, method = "class")
+```
+
+Po zakończeniu tej operacji możemy sprawdzić jakich reguł klasyfikacyjnych
+nauczył się model. Drzewo decyzyjne można zwizualizować za pomocą funkcji
+`prp()`.
+
+```{r}
+prp(mdl)
+```
+
+# Walidacja
+
+Sprawdźmy teraz jaka jest skuteczność stworzonego modelu klasyfikacyjnego na
+zbiorze testowym. W tym celu należy wykorzystać funkcję `predict()`. Zbiór
+danych testowych musi posiadać dokładnie te same zmienne wyjaśniające co zbiór
+treningowy. Kolumnę z prawdziwymi (rzeczywistymi) klasami należy pominąć
+(usunąć).
+
+```{r}
+pred = predict(mdl, test[, -8], type = "class")
+unname(head(pred)) # `unname()` usuwa numer porządkowy wiersza/piksela
+```
+
+Wykonaliśmy predykcje dla zbioru testowego. Teraz musimy obliczyć miarę
+(wskaźnik) skuteczności. Jako przykład wybierzemy dokładność (*accuracy*)
+definiowaną jako iloraz poprawnych klasyfikacji do wszystkich (poprawnych i
+niepoprawnych) klasyfikacji.
+
+```{r}
+pop_klas = test$klasa == pred # zwraca wartość logiczną czy klasa jest prawidłowa
+sum(pop_klas) / length(pop_klas)
+```
+
+Skuteczność naszego modelu wynosi około 71%. Oprócz jednej ogólnej statystyki
+możemy sprawdzić również błędy klasyfikacji dla poszczególnych klas. Takie
+zestawienie nazywane jest tabelą pomyłek (*confusion matrix*).
+
+```{r}
+table(pred = pred, true = test$klasa)
+```
+
+Poprawnie sklasyfikowane obiekty znajdują się na przekątnej. Obiekty
+sklasyfikowane jako fałszywe pozytywne (*false positive*) znajdują się w prawej
+górnej części, natomiast obiekty sklasyfikowane jako fałszywe negatywne (*false
+negative*) w lewej dolnej części.
+
+# Finalna mapa
+
+Jeśli opracowany model spełnia nasze oczekiwania, to możemy wykorzystać go do
+predykcji na całym obszarze. Ponownie użyjemy funkcję `predict()`, ale tym
+razem jako dane wejściowe posłuży raster `landsat`. Dodatkowo, powinniśmy
+ustawić argument `na.rm = TRUE`, aby uniknąć predykcji poza obszarem analizy.
+
+```{r}
+pred_map = predict(landsat, mdl, type = "class", na.rm = TRUE)
+```
+
+Jako wynik powyższej operacji otrzymaliśmy mapę (SpatRaster) z predykcją klas
+pokrycia terenu. Przygotujmy wizualizację wykorzystując dostarczoną legendę
+(obiekt `legenda`). W pierwszej kolumnie znajdziemy ID klasy, w drugiej wartość
+koloru RGB w zapisie szesnastkowym, a w trzeciej nazwę klasy.
+
+Przygotowanie legendy składa się z dwóch etapów:
+
+1. Sprawdzenie, które klasy rzeczywiście występują na naszym obszarze
+2. Dopasowanie kolorów do odpowiednich klas
+
+Odnośnie pierwszego punktu, to najprościej wykorzystać funkcję `droplevels()`,
+która usunie puste kategorie z rastra (np. winnica, wrzosowisko). Następnie
+należy wyświetlić kategorie za pomocą funkcji `levels()`. Do każdej warstwy
+rastra mogą być przypisane różne kategorie, więc musimy pobrać je tylko dla
+pierwszej warstwy oraz wskazać atrybut `class`.
+
+Dopasowania kolorów można dokonać za pomocą funkcji `match()`. Jako pierwszy
+wskazujemy obiekt z naszymi klasami, jako drugi obiekt ramkę danych ze schematem
+kolorów (`legenda`) i w wyniku otrzymamy dopasowane indeksy kolorów.
+
+```{r}
+lv = droplevels(pred_map) # usuń puste kategorie z rastra
+lv = levels(lv) # zwróć kategorie jako ramkę danych
+lv = lv[[1]][["class"]] # wybierz pierwszą warstwę i kolumnę z nazwami klas
+```
+
+```{r}
+col_idx = match(lv, legenda$Klasa) # dopasuj klasy do odpowiednich kolorów
+plot(pred_map, main = "Predykcja klas", col = legenda$RGB[col_idx])
+```
+
+W przypadku, gdy raster posiada oryginalne ID klas (tj. 0, 62, 73, 75, itd.),
+to możemy po prostu przypisać ramkę danych do rastra.
+
+```{r}
+levels(s2glc) = legenda[, c(1, 3)]
+lv = levels(droplevels(s2glc))[[1]][["Klasa"]]
+col_idx = match(lv, legenda$Klasa)
+plot(s2glc, col = legenda$RGB[col_idx], main = "Rzeczywiste klasy")
+```
+
+# Dalsze kroki
+
+Przedstawiona analiza stanowi jedynie zarys wykorzystania klasyfikacji
+nadzorowanej do danych satelitarnych i następujące aspekty mogą zostać
+rozszerzone:
+
+- zastosowanie bardziej złożonych [modeli klasyfikacyjnych](https://cran.r-project.org/web/views/MachineLearning.html)
+- zastosowanie innych metod walidacji (w tym w ujęciu przestrzennym)
+- optymalizacja hiperparametrów modeli
+- ocena istotności i związku zmiennych wyjaśniających
