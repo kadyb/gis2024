@@ -95,3 +95,34 @@ plot(kr[[2]], col = gray.colors(n = 10, rev = TRUE), main = "Wariancja")
 # test
 kr_test = predict(mdl, test, debug.level = 0)$var1.pred
 rmse_kr <- RMSE(test$OPAD, kr_test)
+
+#install.packages("fields")
+library("fields")
+# tps
+
+# Interpolacja metodą cienkiej płytki (TPS)
+tps_model <- Tps(as.matrix(trening[, c("X", "Y")]), trening$OPAD)
+
+# Predykcja dla danych testowych
+tps_test_pred <- predict(tps_model, as.matrix(test[, c("X", "Y")]))
+tps_rmse <- RMSE(test$OPAD, tps_test_pred)
+print(paste("RMSE TPS:", tps_rmse))
+
+# Generowanie siatki predykcyjnej
+grid <- expand.grid(X = seq(min(meteo_df$X), max(meteo_df$X), by = 0.01), 
+                    Y = seq(min(meteo_df$Y), max(meteo_df$Y), by = 0.01))
+
+# Predykcja na siatce
+tps_pred <- predict(tps_model, as.matrix(grid))
+
+# Konwersja wyników do obiektu rast
+grid$OPAD <- tps_pred
+tps_rast <- rast(grid, type = "xyz")
+plot(tps_rast, col = paleta, main = "Interpolacja metodą cienkiej płytki")
+
+# Podsumowanie wyników RMSE
+results <- data.frame(
+  Method = c("Naturalna interpolacja sąsiadów", "Interpolacja wielomianowa", "Odwrotne ważenie odległości", "Kriging", "TPS"),
+  RMSE = c(rmse_nn, rmse_poly, rmse_idw, rmse_kr, tps_rmse)
+)
+print(results)
