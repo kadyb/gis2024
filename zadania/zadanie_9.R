@@ -36,12 +36,11 @@ for (i in seq_along(urls)) {
 
 # sprawdź metadane rastrów
 r <- rast(rastry)
-names(r) <- c("Blue", "Green", "Red", "NIR")
+names(r) <- c("Blue", "Green", "NIR", "Red")
 r
 
 #przygotuj wizualizację RGB
-rgb_stack <- c(r$Red, r$Green, r$Blue)
-plotRGB(rgb_stack, r=1, g=2, b=3, stretch="lin")
+plotRGB(r, r=4, g=2, b=1, stretch="lin")
 
 # pobierz losową próbę 10 tys. punktów dla kanału niebieskiego, 
 # zielonego, czerwonego oraz bliskiej podczerwieni i zaprezentuj statystyki opisowe oraz porównaj histogramy
@@ -49,16 +48,16 @@ plotRGB(rgb_stack, r=1, g=2, b=3, stretch="lin")
 set.seed(42)
 sample_size <- 10000
 sample_points <- spatSample(r, size=sample_size, method="random", as.df=TRUE, na.rm=TRUE)
-colnames(sample_points) <- c("Blue", "Green", "Red", "NIR")
 
-stats <- sample_points |> summary(funs(mean, sd, min, max, median, IQR))
+
+stats <- sample_points |> summary()
 print(stats)
 
 sample_points_long <- sample_points %>%
   pivot_longer(cols = everything(), names_to = "Channel", values_to = "Value")
 
 ggplot(sample_points_long, aes(x=Value, fill=Channel)) +
-  geom_histogram(bins=30, alpha=0.5, position="identity") +
+  geom_histogram(bins=30, alpha = 1, position="identity") +
   facet_wrap(~ Channel, scales = "fixed") +
   theme_minimal() +
   labs(title="Histogramy kanałów rastrowych", x="Wartość", y="Częstotliwość")
@@ -77,13 +76,12 @@ print(paste("Współczynnik korelacji Pearsona:", correlation))
 
 #oblicz znormalizowany różnicowy wskaźnik wegetacji (NDVI) i przygotuj wizualizację
 
-red_band <- r[[3]]
-nir_band <- r[[4]]
-
-ndvi <- (nir_band - red_band) / (nir_band + red_band)
+ndvi <- (r[[3]] - r[[4]])/(r[[3]]+r[[4]])
 ndvi[ndvi < -1] <- -1
 ndvi[ndvi > 1] <- 1
 
 
 # Wizualizacja NDVI
-plot(ndvi, main="Znormalizowany Różnicowy Wskaźnik Wegetacji (NDVI)")
+
+colors <- colorRampPalette(c("red", "yellow", "darkgreen"))
+plot(ndvi, main="Znormalizowany Różnicowy Wskaźnik Wegetacji (NDVI)", col = colors(100))
