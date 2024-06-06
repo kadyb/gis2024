@@ -258,4 +258,6 @@ RMSE(test$TEMP, kr_test)
 
 **8.** Porównaj wymienione metody dla dobowej sumy opadów (`meteo_df$OPAD`).
 Dodatkowo wykorzystaj metodę "cienkiej płytki" (*thin plate spline*) z pakietu
-**fields** (funkcja `Tps()`).
+**fields** (funkcja `Tps()`). Zwróć uwagę, że prognozowana wartość opadu
+nie powinna być ujemna.
+
