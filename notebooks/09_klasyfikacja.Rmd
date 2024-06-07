@@ -145,11 +145,10 @@ parametry są następujące:
 landsat = landsat * 0.0000275 - 0.2
 ```
 
-Usuńmy jeszcze wartości odstające.
+Usuńmy jeszcze wartości odstające używając funkcji `clamp()`.
 
 ```{r}
-landsat[landsat < 0] = NA
-landsat[landsat > 1] = NA
+landsat = clamp(landsat, lower = 0, upper = 1, values = FALSE)
 ```
 
 Tak jak podczas klasteryzacji, algorytmy klasyfikacji nadzorowanej również

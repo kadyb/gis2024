@@ -1581,9 +1581,9 @@ z Landsata 8, parametry są następujące:</p>
 <li>przesunięcie: <span class="math inline">\(-0.2\)</span></li>
 </ul>
 <pre class="r"><code>landsat = landsat * 0.0000275 - 0.2</code></pre>
-<p>Usuńmy jeszcze wartości odstające.</p>
-<pre class="r"><code>landsat[landsat &lt; 0] = NA
-landsat[landsat &gt; 1] = NA</code></pre>
+<p>Usuńmy jeszcze wartości odstające używając funkcji
+<code>clamp()</code>.</p>
+<pre class="r"><code>landsat = clamp(landsat, lower = 0, upper = 1, values = FALSE)</code></pre>
 <p>Tak jak podczas klasteryzacji, algorytmy klasyfikacji nadzorowanej
 również wymagają określonej struktury danych wejściowych, np. ramki
 danych (<em>data frame</em>). Jednak znaczącą różnicą jest obecność
