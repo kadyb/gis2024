@@ -56,10 +56,15 @@ rmse_nn <- RMSE(test$OPAD, nn_test)
 mdl = gstat(formula = OPAD ~ 1, locations = ~X + Y, data = trening,
             degree = 3)
 poly = interpolate(r, mdl, xyNames = c("X", "Y"), debug.level = 0)
+#zamiana wartości ujemnych na dodatnie
+poly_vals = values(poly)
+poly_vals[poly_vals < 0] <- 0
+values(poly) <- poly_vals
 poly = subset(poly, 1)
 plot(poly, col = paleta)
 # test
 poly_test = predict(mdl, test, debug.level = 0)$var1.pred
+poly_test <- pmax(poly_test, 0)
 rmse_poly <- RMSE(test$OPAD, poly_test)
 
 # Odwrotne ważenie odległości
