@@ -1,13 +1,14 @@
 # Jakub Grabowski & Filip Skiba
 
 library("terra")
-
+library("fields")
+library("gstat")
 
 meteo_df = read.csv("../dane/dane_meteo.csv")
 str(meteo_df)
 
 summary(meteo_df$OPAD)
-hist(meteo_df$OPAD, main = NULL, breaks = 10, xlab = "Opad",
+hist(meteo_df$OPAD, main = NULL, breaks = 10, xlab = "Suma opadów [mm]",
      ylab = "Częstość" )
 meteo = vect(meteo_df, geom = c("X", "Y"), crs = "EPSG:4326")
 meteo
@@ -15,9 +16,9 @@ meteo
 plot(meteo, "TYP", col = c("purple", "blue"), alpha = 0.7,
      main = "Stacje meteorologiczne")
 
-paleta = hcl.colors(10, palette = "RdYlBu", rev = TRUE)
+paleta = hcl.colors(10, palette = "Blues 2", rev = TRUE)
 plot(meteo, "OPAD", type = "continuous", col = paleta,
-     main = "Opad")
+     main = "Suma opadów [mm]")
 
 r = rast(meteo, resolution = 0.01)
 r
@@ -40,9 +41,6 @@ RMSE = function(obserwowane, predykcja) {
 
 # ============= METODY INTERPOLACJI
 # Naturalna interpolacja sąsiadów
-
-#install.packages("gstat")
-library("gstat")
 
 mdl = gstat(formula = OPAD ~ 1, locations = ~X + Y, data = trening, nmax = 10,
             set = list(idp = 0))
@@ -96,29 +94,17 @@ plot(kr[[2]], col = gray.colors(n = 10, rev = TRUE), main = "Wariancja")
 kr_test = predict(mdl, test, debug.level = 0)$var1.pred
 rmse_kr <- RMSE(test$OPAD, kr_test)
 
-#install.packages("fields")
-library("fields")
-# tps
+par(mfrow = c(1, 1))
 
 # Interpolacja metodą cienkiej płytki (TPS)
-tps_model <- Tps(as.matrix(trening[, c("X", "Y")]), trening$OPAD)
-
-# Predykcja dla danych testowych
-tps_test_pred <- predict(tps_model, as.matrix(test[, c("X", "Y")]))
-tps_rmse <- RMSE(test$OPAD, tps_test_pred)
-print(paste("RMSE TPS:", tps_rmse))
-
-# Generowanie siatki predykcyjnej
-grid <- expand.grid(X = seq(min(meteo_df$X), max(meteo_df$X), by = 0.01), 
-                    Y = seq(min(meteo_df$Y), max(meteo_df$Y), by = 0.01))
-
-# Predykcja na siatce
-tps_pred <- predict(tps_model, as.matrix(grid))
-
-# Konwersja wyników do obiektu rast
-grid$OPAD <- tps_pred
-tps_rast <- rast(grid, type = "xyz")
+tps_model = Tps(as.matrix(trening[, c("X", "Y")]), trening$OPAD)
+tps_rast = interpolate(r, tps_model, xyNames = c("X", "Y"))
 plot(tps_rast, col = paleta, main = "Interpolacja metodą cienkiej płytki")
+
+# Predykcja
+tps_test_pred = predict(tps_model, as.matrix(test[, c("X", "Y")]))
+tps_rmse = RMSE(test$OPAD, tps_test_pred)
+print(paste("RMSE TPS:", tps_rmse))
 
 # Podsumowanie wyników RMSE
 results <- data.frame(
@@ -127,4 +113,4 @@ results <- data.frame(
 )
 print(results)
 
-# Jak można zauważyć przy metodzie cienkiej płyty wartość jest najmniejsza co oznacza że ma najmiejszy błąd średnio kwadrowowy.
+# Jak można zauważyć przy metodzie cienkiej płyty wartość jest najmniejsza co oznacza że ma najmiejszy błąd średnio kwadratowy.
