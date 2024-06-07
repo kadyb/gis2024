@@ -33,7 +33,7 @@ test = meteo_df[-indeksy, ]
 plot(meteo[indeksy], col = "green", alpha = 0.8)
 plot(meteo[-indeksy], col = "blue", alpha = 0.8, add = TRUE)
 add_legend("bottomleft", legend = c("Treningowe", "Testowe"),
-           col = c("green", "blue"), pch = 19, cex = 0.9)
+           col = c("green", "blue"), pch = 19, cex = 0.6)
 
 RMSE = function(obserwowane, predykcja) {
   sqrt(mean((predykcja - obserwowane) ^ 2))
@@ -47,7 +47,7 @@ mdl = gstat(formula = OPAD ~ 1, locations = ~X + Y, data = trening, nmax = 10,
 nn = interpolate(r, mdl, xyNames = c("X", "Y"), debug.level = 0)
 nn = subset(nn, 1) # wybiera tylko pierwszą warstwę
 plot(nn, col = paleta)
-
+# test
 nn_test = predict(mdl, test, debug.level = 0)$var1.pred
 rmse_nn <- RMSE(test$OPAD, nn_test)
 
@@ -57,7 +57,7 @@ mdl = gstat(formula = OPAD ~ 1, locations = ~X + Y, data = trening,
             degree = 3)
 poly = interpolate(r, mdl, xyNames = c("X", "Y"), debug.level = 0)
 poly = subset(poly, 1)
-poly = clamp(poly, lower = 0) #zamiana wartości ujemnych na dodatnie
+poly = clamp(poly, lower = 0) # zamiana wartości ujemnych
 plot(poly, col = paleta)
 # test
 poly_test = predict(mdl, test, debug.level = 0)$var1.pred
@@ -99,21 +99,25 @@ rmse_kr <- RMSE(test$OPAD, kr_test)
 par(mfrow = c(1, 1))
 
 # Interpolacja metodą cienkiej płytki (TPS)
+
 tps_model = Tps(as.matrix(trening[, c("X", "Y")]), trening$OPAD)
 tps_rast = interpolate(r, tps_model, xyNames = c("X", "Y"))
-tps_rast = clamp(tps_rast, lower = 0) #zamiana wartości ujemnych na dodatnie
+tps_rast = clamp(tps_rast, lower = 0) # zamiana wartości ujemnych
 plot(tps_rast, col = paleta, main = "Interpolacja metodą cienkiej płytki")
-
-# Predykcja
+# test
 tps_test_pred = predict(tps_model, as.matrix(test[, c("X", "Y")]))
+tps_test_pred = pmax(tps_test_pred, 0)
 tps_rmse = RMSE(test$OPAD, tps_test_pred)
 print(paste("RMSE TPS:", tps_rmse))
 
-# Podsumowanie wyników RMSE
+# ============= Podsumowanie wyników RMSE
 results <- data.frame(
-  Method = c("Naturalna interpolacja sąsiadów", "Interpolacja wielomianowa", "Odwrotne ważenie odległości", "Kriging", "TPS"),
+  Method = c("Naturalna interpolacja sąsiadów", "Interpolacja wielomianowa",
+             "Odwrotne ważenie odległości", "Kriging", "TPS"),
   RMSE = c(rmse_nn, rmse_poly, rmse_idw, rmse_kr, tps_rmse)
 )
 print(results)
 
-# Jak można zauważyć przy metodzie cienkiej płyty wartość jest najmniejsza co oznacza że ma najmiejszy błąd średnio kwadratowy.
+# Najmniejszą wartość błędu predykcji otrzymano dla metody TPS, a największą
+# dla interpolacji za pomocą wielomianu trzeciego stopnia
+
