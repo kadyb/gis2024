@@ -1,9 +1,5 @@
 #wykonali Maciej Fornal Hubert Janowski Paweł Gil
 library(terra)
-install.packages("rgugik")
-library("rgugik")
-library("rstac")
-install.packages("raster")
 library("raster")
 
 # Funkcja do obliczania mediany i odchylenia standardowego
@@ -37,7 +33,7 @@ unzip("powiaty.zip", exdir = "zad5")
 
 # Wczytywanie pliku shapefile powiaty
 powiaty <- vect("zad5/Analiza_przestrzenna_5-heads-main/2/powiaty/powiaty.shp")
-powiaty_2180 <- project(powiaty, "EPSG:2180")
+
 
 
 
@@ -57,7 +53,7 @@ for (wojewodztwo in wojewodztwa) {
   cat("Sprawdzam ścieżkę:", file_path, "\n")
   
   if (file.exists(file_path)) {
-    woj_txt <- read.table(file_path, header = TRUE, sep = " ")
+    woj_txt <- read.table(file_path, header = FALSE, sep = " ")
     colnames(woj_txt) <- c("x", "y", "z")  # Zakładam, że to są nazwy kolumn w pliku
     
     # Konwertowanie na obiekt typu SpatVector
@@ -89,3 +85,19 @@ for (wojewodztwo in wojewodztwa) {
   }
 }
 
+# Obliczanie statystyk dla wszystkich powiatów
+powiaty_stats <- calculate_stats(spat_vector, powiaty_2180)
+
+# Tworzenie mapy odchylenia standardowego dla wszystkich powiatów
+std_map <- rasterize(powiaty_2180, powiaty_stats["Odch_Std"], field="Odch_Std")
+plot(std_map, main="Standard Deviation")
+legend("topright", legend="Standard Deviation", fill=NA, border="black", bty="n")
+dev.copy(png, filename=paste0("std_map_", wojewodztwo, ".png"))
+dev.off()
+
+# Tworzenie mapy mediany wysokości dla wszystkich powiatów
+med_map <- rasterize(powiaty_2180, powiaty_stats["Mediana_wysokosci"], field="Mediana_wysokosci")
+plot(med_map, main="Median Height")
+legend("topright", legend="Median Height", fill=NA, border="black", bty="n")
+dev.copy(png, filename=paste0("med_map_", wojewodztwo, ".png"))
+dev.off()
