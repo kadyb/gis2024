@@ -172,7 +172,8 @@ Im większa wartość tej metryki, tym większy błąd.
 
 ## Metody interpolacji
 
-Pakiet **gstat** oferuje szereg metod do modelowania przestrzennego.
+Pakiet **gstat** oferuje szereg metod do modelowania przestrzennego, które
+są dostępne za pomocą funkcji o tej samej nazwie, tj. `gstat()`.
 
 ```{r}
 library("gstat")
@@ -180,24 +181,67 @@ library("gstat")
 
 ### Naturalna interpolacja sąsiadów
 
+Naturalna interpolacja sąsiadów wymaga zdefiniowana pięciu argumentów:
+
+1. wzoru modelu -- `formula`. W naszym przykładzie nie wykorzystujemy żadnych
+dodatkowych zmiennych (tj. zmiennych wyjaśniających takich jak wysokość terenu
+czy odległości od zbiorników wodnych). Modelujemy wyłącznie rozkład temperatury.
+Zapis wzoru wygląda w następujący sposób: `formula = TEMP ~ 1` (można to rozumieć,
+że temperatura modelowana jest od samej siebie; uwzględniając jedynie rozkład
+przestrzenny).
+2. nazwy współrzędnych geograficznych -- `locations`. W naszym przykładzie:
+`locations = ~X + Y`.
+3. zbiór danych -- `data`.
+4. liczba najbliższych obserwacji, które zostaną wykorzystane do predykcji -- `nmax`.
+5. wykładnik odwrotności odległości (*inverse distance power*). W przypadku tej
+metody jego wartość należy ustawić na 0, żeby wszystkie obserwacje miały równą
+wagę: `set = list(idp = 0)`.
+
 ```{r}
 mdl = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = trening, nmax = 10,
             set = list(idp = 0))
+```
+
+W ten sposób opracowaliśmy pierwszy model predykcyjny. Tak wytrenowany model
+możemy zastosować dla całego obszaru analizy używając funkcji `interpolate()`,
+w której określimy raster, model, nazwy kolumn ze współrzędnymi (`xyNames`).
+
+```{r}
 nn = interpolate(r, mdl, xyNames = c("X", "Y"), debug.level = 0)
 nn = subset(nn, 1) # wybiera tylko pierwszą warstwę
 plot(nn, col = paleta)
 ```
 
+Walidacji wyników można dokonać za pomocą funkcji `predict()`. Predykcję
+przeprowadzimy jedynie dla punktów testowych, które nie były wykorzystane
+do wytrenowania modelu. W przeciwieństwie do funkcji `interpolate()` najpierw
+należy zdefiniować model, a następnie zbiór danych.
+
 ```{r}
-nn_test = predict(mdl, test, debug.level = 0)$var1.pred
+nn_test = predict(mdl, test, debug.level = 0)
+# wybierz kolumnę z prognozowanymi wartościami
+nn_test = nn_test$var1.pred
+nn_test
+```
+
+W ten sposób otrzymaliśmy wartości prognozowane przez model dla punktów ze
+zbioru testowego. W kolejnym kroku wyliczmy błąd prognozy za pomocą wcześniej
+zdefiniowanej funkcji `RMSE()`.
+
+```{r}
 RMSE(test$TEMP, nn_test)
 ```
 
 ### Interpolacja wielomianowa
 
+Podobnie jak w poprzednim przykładzie obligatoryjnie musimy zdefiniować argumenty
+`formula`, `locations` oraz `data`. Jednak, aby wykonać interpolację za pomocą
+funkcji wielomianowych, dodatkowo trzeba zdefiniować stopień wielomianu
+(argument `degree`) z przedziału od 1 do 3. Pozostałe kroki pozostają bez zmian. 
+
 ```{r}
 mdl = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = trening,
-            degree = 3)
+            degree = 3) # wielomian trzeciego stopnia
 poly = interpolate(r, mdl, xyNames = c("X", "Y"), debug.level = 0)
 poly = subset(poly, 1)
 plot(poly, col = paleta)
@@ -209,6 +253,12 @@ RMSE(test$TEMP, poly_test)
 ```
 
 ### Odwrotne ważenie odległości
+
+Metoda odwrotnej ważonej odległości zakłada, że otaczające punkty wpływają na
+przewidywaną wartość komórki na podstawie odwrotności ich odległości, czyli
+punkty, które są położone dalej, mają mniejszą wagę w predykcji wartości.
+Wykładnik odwrotności odległości ustawia się za pomocą argumentu
+`set = list(idp = 1)`.
 
 ```{r}
 mdl = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = trening,
@@ -225,17 +275,55 @@ RMSE(test$TEMP, idw_test)
 
 ### Kriging
 
+W porównaniu do zaprezentowanych metod interpolacji, modele geostatystyczne są
+bardziej skomplikowane, ponieważ wymagają zdefiniowania modelu na podstawie
+wariogramu, który służy do oceny autokorelacji w ujęciu przestrzennym. W tym
+celu najpierw należy stworzyć obiekt `gstat`, a następnie wykorzystać funkcję
+`variogram()`. Szerokość przedziałów odległości (argument `width`) jest
+dobierana automatycznie, jednak najczęściej wartość optymalna wymaga
+samodzielnego wyboru metodą prób i błędów.
+
 ```{r}
 gst = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = trening)
 v = variogram(gst, width = 0.4)
 plot(v)
 ```
 
+Cała sztuka modelowania geostatystycznego polega na dopasowaniu modeli
+matematycznych do punktów na wariogramie. Dostępne modele w pakiecie **gstat**
+można wyświetlić za pomocą funkcji `show.vgms()`. Do manualnego zdefiniowania
+modelu służy funkcja `vgm()`, dla której należy określić następujące parametry:
+
+* `psill` (próg) -- wartość, przy której wariogram się wyrównuje, reprezentując
+maksymalną wariancję lub całkowitą wariancję danych. Poza odległością, dla
+której próg jest osiągnięty, punkty są uważane za nieskorelowane.
+* `range` (zasięg) -- zakres, w którym punkty są skorelowane przestrzennie.
+* `nugget` -- wariancja przy zerowej odległości związana z błędem pomiaru lub
+krótkozasięgową zmiennością przestrzenną występująca w odległościach mniejszych
+niż interwał próbkowania.
+
+```{r}
+# model sferyczny
+mdl_sph = vgm(psill = 3, model = "Sph", range = 2, nugget = 1)
+plot(v, model = mdl_sph)
+```
+
+Dodatkowo, istnieje możliwość automatycznej optymalizacji parametrów modelu
+przy pomocy funkcji `fit.variogram()`.
+
 ```{r warning=FALSE}
-fv = fit.variogram(v, vgm(psill = 3, model = "Sph", range = 2, nugget = 1))
+fv = fit.variogram(v, mdl_sph)
 fv
 plot(v, model = fv)
 ```
+
+Po zdefiniowaniu modelu (i optymalizacji jego parametrów) możemy przejść do
+predykcji używając krigingu zwyczajnego, który zakłada, że średnia modelowanej
+zmiennej jest stała, ale nieznana w lokalnym otoczeniu interpolacji.
+Procedura predykcji wygląda identycznie jak w poprzednich przypadkach, jednak
+warto zauważyć, że zwracane są dwa obiekty. Pierwszy reprezentuje estymowane
+wartości modelowanej zmiennej, natomiast drugi wariancje estymacji (wariancja
+rośnie wraz z odległością od punktu pomiarowego).
 
 ```{r}
 mdl = gstat(formula = TEMP ~ 1, locations = ~X + Y, data = trening, model = fv)
@@ -254,10 +342,14 @@ kr_test = predict(mdl, test, debug.level = 0)$var1.pred
 RMSE(test$TEMP, kr_test)
 ```
 
+Jeśli chcesz rozszerzyć swoją wiedzę z zakresu statystyki przestrzennej,
+to koniecznie sprawdź podręcznik
+"[Geostatystyka w R](https://bookdown.org/nowosad/geostatystyka/)"
+autorstwa Jakuba Nowosada.
+
 # Zadanie
 
 **8.** Porównaj wymienione metody dla dobowej sumy opadów (`meteo_df$OPAD`).
 Dodatkowo wykorzystaj metodę "cienkiej płytki" (*thin plate spline*) z pakietu
 **fields** (funkcja `Tps()`). Zwróć uwagę, że prognozowana wartość opadu
 nie powinna być ujemna.
-
